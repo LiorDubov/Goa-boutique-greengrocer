@@ -329,7 +329,7 @@ const ChatWidget = ({lang,open,onClose}) => {
 };
 export default function GOA() {
   /* Products state — synced from Firestore */
-  const [products,setProducts]=useState(DEFAULT_P);
+  const [products,setProducts]=useState([]);
   const [categories,setCategories]=useState(DEFAULT_CATS);
   const [fbUser,setFbUser]=useState(null);
   const [fbReady,setFbReady]=useState(false);

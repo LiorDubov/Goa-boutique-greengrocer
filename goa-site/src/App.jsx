@@ -673,16 +673,16 @@ export default function GOA() {
   const adminLogin=()=>{if(adminPin===ADMIN_PIN)setAdminAuth(true);else setAdminPin("");};
   const openEditModal=p=>{
     // Rebuild enabledUnits + prices from saved data
+    // Support legacy products (no enabledUnits field) — use p.u as the single active unit
     const enabledUnits = p.enabledUnits
       ? {...p.enabledUnits}
-      : {[p.u||"perKg"]:true};
-    const prices = p.unitPrices
+      : {perKg: p.u==="perKg", perUnit: p.u==="perUnit", perPack: p.u==="perPack"};
+    const unitPrices = p.unitPrices
       ? {...p.unitPrices}
-      : {[p.u||"perKg"]:p.price};
-    // priceStr = price of the primary/first active unit
+      : {[p.u||"perKg"]: p.price};
     const firstActive = UNIT_KEYS.find(k=>enabledUnits[k]) || p.u || "perKg";
-    const priceStr = String(prices[firstActive]||p.price||"");
-    setProdModal({mode:"edit",form:{...p,priceStr,stockStr:String(p.stock??50),enabledUnits,prices}});
+    const priceStr = String(unitPrices[firstActive]||p.price||"");
+    setProdModal({mode:"edit",form:{...p,priceStr,stockStr:String(p.stock??50),enabledUnits,prices:unitPrices}});
   };
   const openAddModal=()=>{
     const mx=products.reduce((m,p)=>Math.max(m,p.id),0);
@@ -956,44 +956,118 @@ export default function GOA() {
       )}
 
       {/* ═══ QUICK VIEW ═══ */}
-      {qv&&(
-        <div className="qov" onClick={()=>setQv(null)}>
-          <div className="qc" onClick={e=>e.stopPropagation()}>
-            <div style={{height:200,position:"relative",overflow:"hidden",background:"linear-gradient(145deg,#FAF7F0,#EDE7DA,#F5EFE3)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <span style={{fontSize:72,filter:"drop-shadow(0 6px 12px rgba(44,36,22,0.1))"}}>{qv.img}</span>
-              <div style={{position:"absolute",top:12,display:"flex",gap:4,flexWrap:"wrap",[S]:12}}>
-                {qv.organic&&<span className="tag otag">{t.organic}</span>}
-                {qv.seasonal&&<span className="tag stag">{t.seasonalTag}</span>}
-                {qv.pop&&<span className="tag ptag">{t.popular}</span>}
+      {qv&&(()=>{
+        const activeUnits = qv.enabledUnits ? UNIT_KEYS.filter(k=>qv.enabledUnits[k]) : [qv.u||"perKg"];
+        const isMultiUnit = activeUnits.length > 1;
+        const selectedUnit = notes[`${qv.id}_unit`] || activeUnits[0];
+        const displayPrice = qv.unitPrices?.[selectedUnit] ?? qv.price;
+        return(
+          <div className="qov" onClick={()=>setQv(null)}>
+            <div className="qc" onClick={e=>e.stopPropagation()}>
+              {/* Image */}
+              <div style={{height:200,position:"relative",overflow:"hidden",background:"linear-gradient(145deg,#FAF7F0,#EDE7DA,#F5EFE3)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {qv.img?.startsWith("http")
+                  ? <img src={qv.img} alt={qv.n[lang]} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                  : <span style={{fontSize:72,filter:"drop-shadow(0 6px 12px rgba(44,36,22,0.1))"}}>{qv.img}</span>
+                }
+                <div style={{position:"absolute",top:12,display:"flex",gap:4,flexWrap:"wrap",[S]:12}}>
+                  {qv.organic&&<span className="tag otag">{t.organic}</span>}
+                  {qv.seasonal&&<span className="tag stag">{t.seasonalTag}</span>}
+                  {qv.pop&&<span className="tag ptag">{t.popular}</span>}
+                </div>
+                <button onClick={()=>setQv(null)} style={{position:"absolute",top:12,[E]:12,cursor:"pointer",background:"rgba(255,255,255,0.85)",border:"none",borderRadius:"50%",width:32,height:32,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 4px rgba(0,0,0,0.12)"}}>✕</button>
               </div>
-              <button onClick={()=>setQv(null)} style={{position:"absolute",top:12,[E]:12,cursor:"pointer",background:"rgba(255,255,255,0.8)",border:"none",borderRadius:"50%",width:30,height:30,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-            </div>
-            <div style={{padding:"20px 24px 24px"}}>
-              <div style={{fontSize:18,fontFamily:"'Playfair Display',serif",marginBottom:3}}>{qv.n[lang]}</div>
-              <div style={{fontSize:13,opacity:0.65,marginBottom:14,color:'#8B7355'}}>📍 {qv.o[lang]}</div>
-              <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-                {qv.enabledUnits && Object.keys(qv.enabledUnits).filter(k=>qv.enabledUnits[k]).length>1 ? (
-                  UNIT_KEYS.filter(k=>qv.enabledUnits?.[k]).map(k=>(
-                    <div key={k} style={{display:"flex",alignItems:"baseline",gap:3,marginInlineEnd:10}}>
-                      <span style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#8B7355"}}>₪{fmtPrice(qv.unitPrices?.[k]||qv.price)}</span>
-                      <span style={{fontSize:11,opacity:0.4}}>{UNIT_LABELS[lang]?.[k]||""}</span>
+
+              <div style={{padding:"20px 24px 24px",overflowY:"auto"}}>
+                <div style={{fontSize:19,fontFamily:"'Playfair Display',serif",marginBottom:3,fontWeight:400}}>{qv.n[lang]}</div>
+                <div style={{fontSize:13,opacity:0.55,marginBottom:14,color:"#8B7355"}}>📍 {qv.o?.[lang]||""}</div>
+
+                {/* Unit selector for multi-unit products, simple price for single */}
+                {isMultiUnit ? (
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontSize:9.5,opacity:0.4,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>
+                      {lang==="en"?"Choose unit":"בחר יחידה"}
                     </div>
-                  ))
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      {activeUnits.map(k=>{
+                        const sel = selectedUnit===k;
+                        return(
+                          <button key={k}
+                            onClick={e=>{e.stopPropagation();setNotes(n=>({...n,[`${qv.id}_unit`]:k}));}}
+                            style={{padding:"10px 18px",borderRadius:22,border:`2px solid ${sel?"#8B7355":"#E5DDD0"}`,
+                              background:sel?"#8B7355":"#fff",color:sel?"#fff":"#2C2416",
+                              cursor:"pointer",fontFamily:"inherit",transition:"all 0.15s",
+                              display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+                            <span style={{fontFamily:"'Playfair Display',serif",fontSize:17,fontWeight:600}}>
+                              ₪{fmtPrice(qv.unitPrices?.[k]||qv.price)}
+                            </span>
+                            <span style={{fontSize:10.5,opacity:sel?0.85:0.5}}>
+                              {UNIT_LABELS[lang]?.[k]||""}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {cQty(qv.id)>0&&<div style={{fontSize:11.5,color:"#8B7355",marginTop:8,opacity:0.7}}>
+                      {lang==="en"?"In cart":"בעגלה"}: {cQty(qv.id)} × ₪{fmtPrice(displayPrice)} = ₪{fmtPrice(displayPrice*cQty(qv.id))}
+                    </div>}
+                  </div>
                 ):(
-                  <>
-                    <span style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#8B7355"}}>₪{fmtPrice(qv.price)}</span>
-                    <span style={{fontSize:11.5,opacity:0.4}}>{UNIT_LABELS[lang]?.[qv.u]||t.product[qv.u]||""}</span>
-                  </>
+                  <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:16}}>
+                    <span style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#8B7355"}}>₪{fmtPrice(displayPrice)}</span>
+                    <span style={{fontSize:11.5,opacity:0.4}}>{UNIT_LABELS[lang]?.[selectedUnit]||""}</span>
+                    {cQty(qv.id)>1&&<span style={{fontSize:12,opacity:0.45,marginInlineStart:"auto"}}>
+                      = ₪{fmtPrice(displayPrice*cQty(qv.id))}
+                    </span>}
+                  </div>
                 )}
-                {cQty(qv.id)>1&&<span style={{fontSize:12,opacity:0.45,marginInlineStart:"auto"}}>= ₪{fmtPrice(qv.price*cQty(qv.id))}</span>}
+
+                {/* Special requests — all propagation stopped so typing doesn't close modal */}
+                <div style={{marginBottom:16}} onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+                  <div style={{fontSize:9.5,opacity:0.4,marginBottom:6,textTransform:"uppercase",letterSpacing:1}}>
+                    {lang==="en"?"Special requests (optional)":"בקשות מיוחדות (אופציונלי)"}
+                  </div>
+                  <textarea
+                    value={notes[qv.id]||""}
+                    placeholder={lang==="en"
+                      ?"e.g. small zucchini for stuffing, very ripe, no stems..."
+                      :"למשל: קישואים קטנים לממולאים, בשלים מאוד, בלי גבעולים..."}
+                    rows={3}
+                    onChange={e=>{e.stopPropagation();setNotes(n=>({...n,[qv.id]:e.target.value}));}}
+                    onClick={e=>e.stopPropagation()}
+                    onKeyDown={e=>e.stopPropagation()}
+                    onFocus={e=>{e.stopPropagation();e.target.style.borderColor="#8B7355";e.target.style.boxShadow="0 0 0 3px rgba(139,115,85,0.1)";}}
+                    onBlur={e=>{e.target.style.borderColor="#E5DDD0";e.target.style.boxShadow="none";}}
+                    style={{width:"100%",padding:"10px 12px",border:"1.5px solid #E5DDD0",borderRadius:10,
+                      fontSize:13,fontFamily:"inherit",outline:"none",resize:"vertical",
+                      background:"#FDFBF7",lineHeight:1.6,boxSizing:"border-box",
+                      color:"#2C2416",transition:"border-color 0.2s, box-shadow 0.2s",
+                      direction:rtl?"rtl":"ltr"}}
+                  />
+                  {notes[qv.id]&&(
+                    <div style={{fontSize:11,color:"#5C7C5C",marginTop:4,display:"flex",alignItems:"center",gap:4}}>
+                      ✓ {lang==="en"?"Request saved — shown in cart":"הבקשה נשמרת ומופיעה בעגלה"}
+                    </div>
+                  )}
+                </div>
+
+                <QtyBtn
+                  q={cQty(qv.id)}
+                  onAdd={()=>addToCart({...qv, u:selectedUnit, price:displayPrice})}
+                  onDec={()=>setQ(qv.id,cQty(qv.id)-1)}
+                  onInc={()=>setQ(qv.id,cQty(qv.id)+1)}
+                  anim={addedAnim[qv.id]}
+                  addL={t.product.add}
+                  addedL={t.product.added}
+                  oos={qv.stock<=0}
+                  oosL={t.product.oos}
+                  lowStock={qv.stock>0&&qv.stock<=5?qv.stock:0}
+                />
               </div>
-              <textarea placeholder={t.product.notes} value={notes[qv.id]||""} onChange={e=>setNotes({...notes,[qv.id]:e.target.value})} rows={2}
-                style={{width:"100%",padding:"9px 12px",border:"1px solid #F0EBE3",borderRadius:9,fontSize:12.5,fontFamily:"inherit",outline:"none",resize:"none",background:"#FAF7F0",marginBottom:14}}/>
-              <QtyBtn q={cQty(qv.id)} onAdd={()=>addToCart(qv)} onDec={()=>setQ(qv.id,cQty(qv.id)-1)} onInc={()=>setQ(qv.id,cQty(qv.id)+1)} anim={addedAnim[qv.id]} addL={t.product.add} addedL={t.product.added} oos={qv.stock<=0} oosL={t.product.oos} lowStock={qv.stock>0&&qv.stock<=5?qv.stock:0}/>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ═══ CART ═══ */}
       {cartOpen&&(<>

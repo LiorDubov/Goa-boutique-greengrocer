@@ -771,9 +771,9 @@ export default function GOA() {
 
       {/* ═══ NAV ═══ */}
       <nav className="topnav">
-        <div className="logo-wrap" onClick={()=>go("home")}>
-          <div className="logo-mark">G</div>
-          <div className="logo-text">
+        <div className="logo-wrap" style={{display:"flex",flexDirection:"row",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>go("home")}>
+          <div className="logo-mark" style={{flexShrink:0}}>G</div>
+          <div className="logo-text" style={{display:"flex",flexDirection:"column",gap:1}}>
             <span className="logo-name">{rtl?"גואה":"GOA"}</span>
             <span className="logo-sub">{rtl?"ירקניית בוטיק":"boutique greengrocer"}</span>
           </div>
@@ -1259,25 +1259,34 @@ export default function GOA() {
         {/* HOME */}
         {page==="home"&&(
           <div style={{animation:"fadeIn 0.5s"}}>
-            <div className="hero">
-              {/* Floating produce decorations — fixed positions, small & subtle */}
-              <div className="hero-deco" style={{top:"10%",left:"6%",fontSize:40,animation:"float 7s ease-in-out infinite"}}>🍋</div>
-              <div className="hero-deco" style={{bottom:"18%",right:"6%",fontSize:34,animation:"float 9s ease-in-out infinite 1s"}}>🌿</div>
-              <div className="hero-deco" style={{top:"16%",right:"10%",fontSize:30,animation:"float 8s ease-in-out infinite 2s"}}>🍅</div>
-              <div className="hero-deco" style={{bottom:"12%",left:"9%",fontSize:26,animation:"float 6s ease-in-out infinite 0.5s"}}>🥦</div>
+            <div className="hero" style={{alignItems:"center",textAlign:"center"}}>
+              {/* Floating produce decorations */}
+              <div className="hero-deco" style={{top:"10%",left:"6%",fontSize:38,animation:"float 7s ease-in-out infinite"}}>🍋</div>
+              <div className="hero-deco" style={{bottom:"18%",right:"6%",fontSize:32,animation:"float 9s ease-in-out infinite 1s"}}>🌿</div>
+              <div className="hero-deco" style={{top:"16%",right:"10%",fontSize:28,animation:"float 8s ease-in-out infinite 2s"}}>🍅</div>
+              <div className="hero-deco" style={{bottom:"12%",left:"9%",fontSize:24,animation:"float 6s ease-in-out infinite 0.5s"}}>🥦</div>
 
-              <div className="hero-content" style={{opacity:heroVis?1:0,transform:heroVis?"translateY(0)":"translateY(24px)",transition:"all 0.9s cubic-bezier(0.2,0,0,1)"}}>
-                <div className="hero-eyebrow">{t.hero.subtitle}</div>
-                <h1 className="hero-headline ht">
+              <div className="hero-content" style={{
+                opacity:heroVis?1:0,
+                transform:heroVis?"translateY(0)":"translateY(24px)",
+                transition:"all 0.9s cubic-bezier(0.2,0,0,1)",
+                alignItems:"center",
+                textAlign:"center",
+                margin:"0 auto",
+              }}>
+                <div className="hero-eyebrow" style={{justifyContent:"center",textAlign:"center"}}>{t.hero.subtitle}</div>
+                <h1 className="hero-headline ht" style={{textAlign:"center",width:"100%"}}>
                   {rtl ? <>גואה <em>בוטיק</em></> : <>GOA <em>boutique</em></>}
                 </h1>
-                <p className="hero-sub">{t.hero.tagline}</p>
-                <button className="hero-cta" onClick={()=>go("shop")}>
-                  <span>🛒</span>
-                  <span>{t.hero.cta}</span>
-                </button>
+                <p className="hero-sub" style={{textAlign:"center",width:"100%"}}>{t.hero.tagline}</p>
+                <div style={{display:"flex",justifyContent:"center",width:"100%"}}>
+                  <button className="hero-cta" onClick={()=>go("shop")}>
+                    <span>🛒</span>
+                    <span>{t.hero.cta}</span>
+                  </button>
+                </div>
               </div>
-              <div style={{position:"absolute",bottom:14,letterSpacing:4,fontSize:8,opacity:0.15,textTransform:"uppercase",fontFamily:"'Lato',sans-serif",zIndex:1}}>{t.hero.since}</div>
+              <div style={{position:"absolute",bottom:14,left:"50%",transform:"translateX(-50%)",letterSpacing:4,fontSize:8,opacity:0.15,textTransform:"uppercase",fontFamily:"'Lato',sans-serif",zIndex:1,whiteSpace:"nowrap"}}>{t.hero.since}</div>
             </div>
 
             {/* Trust badges */}

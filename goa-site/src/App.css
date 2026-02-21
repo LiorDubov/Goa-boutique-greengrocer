@@ -153,11 +153,20 @@ html,body,#root{width:100%;min-height:100vh;margin:0;padding:0}
 .hero {
   min-height: 72vh;
   width: 100%;
-  display: flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:60px 24px 72px;
-  position:relative;overflow:hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 24px 72px;
+  position: relative;
+  overflow: hidden;
   background: var(--cream);
+  /* Force centering regardless of RTL direction */
+  -webkit-box-align: center;
+  -webkit-align-items: center;
 }
+.hero * { box-sizing: border-box; }
 .hero::before{
   content:'';position:absolute;inset:0;
   background:
@@ -172,18 +181,26 @@ html,body,#root{width:100%;min-height:100vh;margin:0;padding:0}
   opacity:0.5;
 }
 .hero-content{
-  position:relative;z-index:1;
-  display:flex;flex-direction:column;align-items:center;
-  max-width:640px;width:100%;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
 }
 .hero-eyebrow{
   font-family:'Lato',sans-serif;font-size:10px;letter-spacing:4px;
   text-transform:uppercase;color:var(--earth);opacity:0.7;
   margin-bottom:20px;
   display:flex;align-items:center;justify-content:center;gap:12px;
+  width:100%;
 }
 .hero-eyebrow::before,.hero-eyebrow::after{
-  content:'';display:block;height:1px;width:28px;background:var(--earth-light);opacity:0.6;
+  content:'';display:block;height:1px;width:28px;background:var(--earth-light);opacity:0.6;flex-shrink:0;
 }
 .hero-headline{
   font-family:'Playfair Display',serif;
@@ -191,6 +208,7 @@ html,body,#root{width:100%;min-height:100vh;margin:0;padding:0}
   font-weight:400;line-height:0.95;
   color:var(--ink);margin-bottom:12px;
   letter-spacing:-1px;
+  width:100%;
 }
 .hero-headline em{
   font-style:italic;
@@ -201,6 +219,7 @@ html,body,#root{width:100%;min-height:100vh;margin:0;padding:0}
   font-size:17px;font-weight:300;color:var(--ink-soft);opacity:0.6;
   margin-bottom:40px;font-style:italic;line-height:1.6;
   font-family:'Cormorant Garamond',serif;
+  width:100%;
 }
 .hero-cta{
   display:inline-flex;align-items:center;gap:10px;
@@ -216,10 +235,9 @@ html,body,#root{width:100%;min-height:100vh;margin:0;padding:0}
   box-shadow:0 8px 32px rgba(42,31,14,0.22);
 }
 .hero-cta:active{transform:translateY(0)}
-/* Hero floating produce — small and subtle, positioned via inline style */
 .hero-deco{
   position:absolute;
-  opacity:0.06;pointer-events:none;user-select:none;
+  opacity:0.07;pointer-events:none;user-select:none;
 }
 
 /* Trust badges below hero */

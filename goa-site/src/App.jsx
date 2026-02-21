@@ -1260,13 +1260,13 @@ export default function GOA() {
         {page==="home"&&(
           <div style={{animation:"fadeIn 0.5s"}}>
             <div className="hero">
-              {/* Floating produce decorations */}
-              <div className="hero-deco" style={{top:"12%",[S]:"8%",animation:"float 7s ease-in-out infinite"}}>🍋</div>
-              <div className="hero-deco" style={{bottom:"20%",[E]:"7%",animation:"float 9s ease-in-out infinite 1s",fontSize:"clamp(36px,5vw,64px)"}}>🌿</div>
-              <div className="hero-deco" style={{top:"18%",[E]:"12%",animation:"float 8s ease-in-out infinite 2s",fontSize:"clamp(32px,4vw,56px)"}}>🍅</div>
-              <div className="hero-deco" style={{bottom:"15%",[S]:"10%",animation:"float 6s ease-in-out infinite 0.5s",fontSize:"clamp(28px,3.5vw,50px)"}}>🥦</div>
+              {/* Floating produce decorations — fixed positions, small & subtle */}
+              <div className="hero-deco" style={{top:"10%",left:"6%",fontSize:40,animation:"float 7s ease-in-out infinite"}}>🍋</div>
+              <div className="hero-deco" style={{bottom:"18%",right:"6%",fontSize:34,animation:"float 9s ease-in-out infinite 1s"}}>🌿</div>
+              <div className="hero-deco" style={{top:"16%",right:"10%",fontSize:30,animation:"float 8s ease-in-out infinite 2s"}}>🍅</div>
+              <div className="hero-deco" style={{bottom:"12%",left:"9%",fontSize:26,animation:"float 6s ease-in-out infinite 0.5s"}}>🥦</div>
 
-              <div style={{position:"relative",zIndex:1,opacity:heroVis?1:0,transform:heroVis?"translateY(0)":"translateY(24px)",transition:"all 0.9s cubic-bezier(0.2,0,0,1)"}}>
+              <div className="hero-content" style={{opacity:heroVis?1:0,transform:heroVis?"translateY(0)":"translateY(24px)",transition:"all 0.9s cubic-bezier(0.2,0,0,1)"}}>
                 <div className="hero-eyebrow">{t.hero.subtitle}</div>
                 <h1 className="hero-headline ht">
                   {rtl ? <>גואה <em>בוטיק</em></> : <>GOA <em>boutique</em></>}
@@ -1277,7 +1277,7 @@ export default function GOA() {
                   <span>{t.hero.cta}</span>
                 </button>
               </div>
-              <div style={{position:"absolute",bottom:16,letterSpacing:4,fontSize:8.5,opacity:0.18,textTransform:"uppercase",fontFamily:"'Lato',sans-serif",zIndex:1}}>{t.hero.since}</div>
+              <div style={{position:"absolute",bottom:14,letterSpacing:4,fontSize:8,opacity:0.15,textTransform:"uppercase",fontFamily:"'Lato',sans-serif",zIndex:1}}>{t.hero.since}</div>
             </div>
 
             {/* Trust badges */}
@@ -1354,13 +1354,16 @@ export default function GOA() {
             {/* Filter panel */}
             <div className="shop-filters">
               <div className="filter-cats">
-                {[{id:"all",label:{en:"All",he:"הכל"},icon:"🛒"},{id:"organic",label:{en:"🌱 Organic",he:"🌱 אורגני"}},...categories.map(c=>({...c,label:{en:`${c.icon} ${c.label.en}`,he:`${c.icon} ${c.label.he}`}}))].map(c=>(
-                  <button key={c.id} className={`cb ${cat===c.id?"on":""} ${c.id==="organic"?"organic-btn":""}`}
-                    onClick={()=>{setCat(c.id);if(c.id!=="all")setSearch("")}}>
-                    {c.label[lang]}
-                  </button>
-                ))}
-                <div style={{marginInlineStart:"auto",position:"relative"}} onClick={e=>e.stopPropagation()}>
+                <div className="filter-cats-pills">
+                  {[{id:"all",label:{en:"All",he:"הכל"}},{id:"organic",label:{en:"🌱 Organic",he:"🌱 אורגני"}},...categories.map(c=>({...c,label:{en:`${c.icon} ${c.label.en}`,he:`${c.icon} ${c.label.he}`}}))].map(c=>(
+                    <button key={c.id} className={`cb ${cat===c.id?"on":""} ${c.id==="organic"?"organic-btn":""}`}
+                      style={{flexShrink:0}}
+                      onClick={()=>{setCat(c.id);if(c.id!=="all")setSearch("")}}>
+                      {c.label[lang]}
+                    </button>
+                  ))}
+                </div>
+                <div style={{flexShrink:0,position:"relative",marginInlineStart:8}} onClick={e=>e.stopPropagation()}>
                   <button className="sb" onClick={()=>setShowSort(!showSort)}>{t.sort.label} ▾</button>
                   {showSort&&<div className="sd">{[["default","—"],["pAsc",t.sort.pAsc],["pDesc",t.sort.pDesc],["name",t.sort.name]].map(([v,l])=>(<button key={v} className={`so ${sortBy===v?"on":""}`} onClick={()=>{setSortBy(v);setShowSort(false)}}>{l}</button>))}</div>}
                 </div>

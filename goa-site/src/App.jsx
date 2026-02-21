@@ -3,6 +3,7 @@ import "./goa.css";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, increment, serverTimestamp } from "firebase/firestore";
 import { getAuth, signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 /* ═══ FIREBASE INIT ═══ */
 const firebaseConfig = {
@@ -17,6 +18,7 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
+const storage = getStorage(fbApp);
 const PRODUCTS_COL = collection(db, "artifacts/goa-boutique-prod/public/data/products");
 const ORDERS_COL = collection(db, "artifacts/goa-boutique-prod/public/data/orders");
 const CATEGORIES_COL = collection(db, "artifacts/goa-boutique-prod/public/data/categories");
@@ -34,7 +36,7 @@ const LS = (k,v) => { try { if(v!==undefined) localStorage.setItem(k,JSON.string
 /* ═══ i18n ═══ */
 const T = {
   en: {
-    nav:{home:"Home",shop:"Shop",subscriptions:"Subscriptions",loyalty:"Rewards",about:"About",orders:"My Orders",login:"Login",logout:"Logout"},
+    nav:{home:"Home",shop:"Shop",subscriptions:"Subscriptions",loyalty:"Rewards",about:"About",orders:"My Orders",login:"Login",logout:"Logout",profile:"Profile"},
     hero:{subtitle:"BOUTIQUE GREENGROCER",tagline:"Where Nature Meets Luxury",cta:"Explore Collection",since:"King George 31, Tel Aviv"},
     banner:"Free delivery on orders over ₪250 · New weekly subscription boxes available",
     categories:{all:"All",fruits:"Fruits",vegetables:"Vegetables",herbs:"Herbs & Spices",dairy:"Dairy & Eggs",pantry:"Pantry",organic:"Organic"},
@@ -52,12 +54,13 @@ const T = {
     orderDone:{title:"Thank You!",msg:"Your order has been sent via WhatsApp",delivery:"Delivery",time:"Time Slot",total:"Total",dismiss:"Continue Shopping"},
     auth:{login:"Login",signup:"Sign Up",email:"Email",password:"Password",noAcc:"Don't have an account?",haveAcc:"Already have an account?"},
     myOrders:{title:"My Orders",empty:"No orders yet — start shopping!",reorder:"Reorder",date:"Date",items:"Items",total:"Total"},
+    profile:{title:"My Profile",addresses:"Saved Addresses",addAddr:"+ Add Address",noAddr:"No saved addresses",street:"Street & Number",city:"City",floor:"Floor",apt:"Apartment",entry:"Entry Code",saveAddr:"Save Address",deleteAddr:"Delete",payment:"Payment Methods",addCard:"+ Add Card",noCards:"No saved cards",cardNum:"Card Number",cardName:"Cardholder Name",cardExp:"Expiry (MM/YY)",saveCard:"Save Card",deleteCard:"Delete",points:"Loyalty Points",tier:"Tier",silver:"Silver",gold:"Gold"},
     admin:{title:"Admin Dashboard",qty:"Quantity",pin:"Enter PIN",products:"Product Manager",name:"Name (EN)",nameHe:"Name (HE)",price:"Price",cat:"Category",unit:"Unit",image:"Image URL",origin:"Origin (EN)",originHe:"Origin (HE)",stock:"Stock",inStock:"In Stock",outOfStock:"Out of Stock",save:"Save",add:"+ Add Product",del:"Delete",edit:"Edit",cancel:"Cancel"},
     emp:{title:"Employee Dashboard",accept:"Accept",processing:"Processing",finalize:"Finalize Order",pending:"Pending",completed:"Completed",actualWt:"Actual Weight (kg)",recalc:"Recalculated",noOrders:"No orders yet",alertNew:"NEW!",liveOrders:"Live Orders",back:"← Back to Store"},
     chat:{title:"GOA Support",askHours:"What are your hours?",askZones:"Delivery zones?",askHuman:"Talk to a human",hoursA:"We're open Sun–Thu 7AM–9PM and Fri 7AM–3PM 🕐",zonesA:"We deliver across Tel Aviv, Ramat Gan, Givatayim, and Herzliya 🚚",humanA:"Connecting you to WhatsApp...",placeholder:"Type a message...",bot:"GOA Bot",you:"You"}
   },
   he: {
-    nav:{home:"בית",shop:"חנות",subscriptions:"מנויים",loyalty:"מועדון",about:"אודות",orders:"ההזמנות שלי",login:"התחברות",logout:"התנתקות"},
+    nav:{home:"בית",shop:"חנות",subscriptions:"מנויים",loyalty:"מועדון",about:"אודות",orders:"ההזמנות שלי",login:"התחברות",logout:"התנתקות",profile:"פרופיל"},
     hero:{subtitle:"ירקניית בוטיק",tagline:"כשהטבע פוגש יוקרה",cta:"גלה את האוסף",since:"המלך ג׳ורג׳ 31, תל אביב"},
     banner:"משלוח חינם בהזמנות מעל ₪250 · חדש: סלים שבועיים במנוי",
     categories:{all:"הכל",fruits:"פירות",vegetables:"ירקות",herbs:"תבלינים",dairy:"חלב וביצים",pantry:"מזווה",organic:"אורגני"},
@@ -75,6 +78,7 @@ const T = {
     orderDone:{title:"תודה רבה!",msg:"ההזמנה שלך נשלחה בוואטסאפ",delivery:"משלוח",time:"שעת משלוח",total:"סה״כ",dismiss:"המשך קנייה"},
     auth:{login:"התחברות",signup:"הרשמה",email:"אימייל",password:"סיסמה",noAcc:"אין לך חשבון?",haveAcc:"כבר יש לך חשבון?"},
     myOrders:{title:"ההזמנות שלי",empty:"אין הזמנות עדיין — התחילו לקנות!",reorder:"הזמן שוב",date:"תאריך",items:"פריטים",total:"סה״כ"},
+    profile:{title:"הפרופיל שלי",addresses:"כתובות שמורות",addAddr:"+ הוסף כתובת",noAddr:"אין כתובות שמורות",street:"רחוב ומספר",city:"עיר",floor:"קומה",apt:"דירה",entry:"קוד כניסה",saveAddr:"שמור כתובת",deleteAddr:"מחק",payment:"אמצעי תשלום",addCard:"+ הוסף כרטיס",noCards:"אין כרטיסים שמורים",cardNum:"מספר כרטיס",cardName:"שם בעל הכרטיס",cardExp:"תוקף (MM/YY)",saveCard:"שמור כרטיס",deleteCard:"מחק",points:"נקודות מועדון",tier:"דרגה",silver:"כסף",gold:"זהב"},
     admin:{title:"לוח ניהול",qty:"כמות",pin:"הזן PIN",products:"ניהול מוצרים",name:"שם (EN)",nameHe:"שם (HE)",price:"מחיר",cat:"קטגוריה",unit:"יחידה",image:"קישור תמונה",origin:"מקור (EN)",originHe:"מקור (HE)",stock:"מלאי",inStock:"במלאי",outOfStock:"אזל",save:"שמור",add:"+ הוסף מוצר",del:"מחק",edit:"ערוך",cancel:"ביטול"},
     emp:{title:"לוח עובדים",accept:"קבל",processing:"בעיבוד",finalize:"סיום הזמנה",pending:"ממתין",completed:"הושלם",actualWt:"משקל בפועל (ק״ג)",recalc:"חושב מחדש",noOrders:"אין הזמנות עדיין",alertNew:"חדש!",liveOrders:"הזמנות חיות",back:"→ חזרה לחנות"},
     chat:{title:"תמיכה GOA",askHours:"מה שעות הפעילות?",askZones:"אזורי משלוח?",askHuman:"דבר עם נציג",hoursA:"אנחנו פתוחים א׳–ה׳ 7:00–21:00 ו׳ 7:00–15:00 🕐",zonesA:"אנחנו מגיעים לכל תל אביב, רמת גן, גבעתיים והרצליה 🚚",humanA:"מעביר לוואטסאפ...",placeholder:"הקלד הודעה...",bot:"בוט GOA",you:"אתה"}
@@ -130,6 +134,13 @@ const DEFAULT_CATS = [
 const UNIT_KEYS=["perKg","perUnit","perPack"];
 const UNIT_LABELS={en:{perKg:"/kg",perUnit:"/unit",perPack:"/pack"},he:{perKg:"/ק״ג",perUnit:"/יחידה",perPack:"/חבילה"}};
 const MAX_P=80;
+
+// Price rounding: always round UP to 1 decimal place (e.g. 8.82 → 8.9)
+const roundUp1=(n)=>Math.ceil(n*10)/10;
+const fmtPrice=(n)=>roundUp1(n).toFixed(1).replace(/\.0$/,"");
+
+const IL_CITIES=["תל אביב","ירושלים","חיפה","ראשון לציון","פתח תקווה","אשדוד","נתניה","באר שבע","בני ברק","רמת גן","גבעתיים","הרצליה","כפר סבא","רעננה","הוד השרון","רחובות","בת ים","חולון","אשקלון","עפולה","נצרת עילית","קריות"];
+
 const getDates=()=>{const o=[],d=new Date();for(let i=1;i<=7;i++){const x=new Date(d);x.setDate(d.getDate()+i);if(x.getDay()!==6)o.push(x);}return o;};
 const fmtD=(d,l)=>d.toLocaleDateString(l==="he"?"he-IL":"en-US",{weekday:"short",month:"short",day:"numeric"});
 const SLOTS=["morning","afternoon","evening"];
@@ -410,6 +421,17 @@ export default function GOA() {
   const [authPass,setAuthPass]=useState("");
   const [authErr,setAuthErr]=useState("");
 
+  /* Profile state */
+  const [profilePage,setProfilePage]=useState("orders"); // orders | addresses | payment | loyalty
+  const [savedAddresses,setSavedAddresses]=useState(()=>{try{return JSON.parse(localStorage.getItem("goa_addresses")||"[]");}catch{return [];}});
+  const [savedCards,setSavedCards]=useState(()=>{try{return JSON.parse(localStorage.getItem("goa_cards")||"[]");}catch{return [];}});
+  const [newAddr,setNewAddr]=useState({street:"",city:"",floor:"",apt:"",entry:""});
+  const [newCard,setNewCard]=useState({num:"",name:"",exp:""});
+  const [showAddrForm,setShowAddrForm]=useState(false);
+  const [showCardForm,setShowCardForm]=useState(false);
+  const [emailTouched,setEmailTouched]=useState(false);
+  const [addrCity,setAddrCity]=useState("");
+
   /* Order history — synced from Firestore (set by onSnapshot above) */
   const [orderHistory,setOrderHistory]=useState([]);
 
@@ -420,6 +442,7 @@ export default function GOA() {
   const [addNew,setAddNew]=useState(false);
   const [adminTab,setAdminTab]=useState("products");
   const [prodModal,setProdModal]=useState(null);
+  const [homeCount,setHomeCount] = useState(8);
   const [empMode,setEmpMode]=useState(false);
   const [chatOpen,setChatOpen]=useState(false);
 
@@ -477,9 +500,9 @@ export default function GOA() {
   const cQty=useCallback(id=>cart.find(i=>i.id===id)?.qty||0,[cart]);
   const addToCart=useCallback(p=>{if((p.stock<=0))return;setCart(pr=>{const x=pr.find(i=>i.id===p.id);return x?pr.map(i=>i.id===p.id?{...i,qty:i.qty+1}:i):[...pr,{...p,qty:1}];});setAddedAnim(pr=>({...pr,[p.id]:true}));setTimeout(()=>setAddedAnim(pr=>({...pr,[p.id]:false})),800);},[]);
   const setQ=useCallback((id,q)=>{if(q<=0)setCart(pr=>pr.filter(i=>i.id!==id));else setCart(pr=>pr.map(i=>i.id===id?{...i,qty:q}:i));},[]);
-  const sub = cart.reduce((s,i)=>s+i.price*i.qty,0);
+  const sub = roundUp1(cart.reduce((s,i)=>s+i.price*i.qty,0));
   const delFee = deliveryMethod==="pickup" ? 0 : sub>=250?0:sub>=150?15:25;
-  const tot = sub+delFee;
+  const tot = roundUp1(sub+delFee);
   const cc = cart.reduce((s,i)=>s+i.qty,0);
 
   // Browser back button — go to home instead of closing app
@@ -507,8 +530,28 @@ export default function GOA() {
   const clearF=()=>{setCat("all");setSearch("");setMaxPrice(MAX_P);setSortBy("default");};
   const go=(p,keepCat)=>{setPage(p);setMobileMenu(false);if(p==="shop"&&!keepCat)clearF();window.scrollTo?.({top:0,behavior:"smooth"});};
 
-  const phoneValid = /^05\d{8}$/.test(cPhone.replace(/[\s\-()]/g,""));
-  const phoneError = phoneTouched && cPhone.trim() && !phoneValid;
+  const emailValid = !cEmail.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cEmail.trim());
+  const emailError = emailTouched && cEmail.trim() && !emailValid;
+
+  // Address & card helpers (stored in localStorage)
+  const saveAddress=()=>{if(!newAddr.street.trim()||!addrCity)return;const a={...newAddr,city:addrCity,id:Date.now()};const updated=[...savedAddresses,a];setSavedAddresses(updated);localStorage.setItem("goa_addresses",JSON.stringify(updated));setNewAddr({street:"",city:"",floor:"",apt:"",entry:""});setAddrCity("");setShowAddrForm(false);};
+  const deleteAddress=(id)=>{const updated=savedAddresses.filter(a=>a.id!==id);setSavedAddresses(updated);localStorage.setItem("goa_addresses",JSON.stringify(updated));};
+  const saveCard=()=>{if(!newCard.num.trim()||!newCard.name.trim()||!newCard.exp.trim())return;const c={...newCard,last4:newCard.num.replace(/\s/g,"").slice(-4),id:Date.now()};const updated=[...savedCards,c];setSavedCards(updated);localStorage.setItem("goa_cards",JSON.stringify(updated));setNewCard({num:"",name:"",exp:""});setShowCardForm(false);};
+  const deleteCard=(id)=>{const updated=savedCards.filter(c=>c.id!==id);setSavedCards(updated);localStorage.setItem("goa_cards",JSON.stringify(updated));};
+
+  // Image upload to Firebase Storage
+  const [imgUploading,setImgUploading]=useState(false);
+  const uploadImage=async(file,onDone)=>{
+    if(!file)return;
+    setImgUploading(true);
+    try{
+      const r=storageRef(storage,`products/${Date.now()}_${file.name}`);
+      await uploadBytes(r,file);
+      const url=await getDownloadURL(r);
+      onDone(url);
+    }catch(e){console.error("Upload error:",e);}
+    setImgUploading(false);
+  };
 
   const placeOrder=()=>{
     const dateStr = delDate ? fmtD(delDate,lang) : "";
@@ -523,7 +566,7 @@ export default function GOA() {
       `${t.cart.name}: ${cName}`,
       `${t.cart.phone}: ${cPhone}`,
       cEmail ? `${lang==="en"?"Email":"אימייל"}: ${cEmail}` : null,
-      deliveryMethod==="deliver" ? `${t.cart.address}: ${cAddr}` : `📍 ${lang==="en"?"Pickup from store":"איסוף מהחנות"}`,
+      deliveryMethod==="deliver" ? `${t.cart.address}: ${cAddr}${addrCity?", "+addrCity:""}` : `📍 ${lang==="en"?"Pickup from store":"איסוף מהחנות"}`,
       ``,
       `📦 *${t.cart.yourOrder}*`,
       itemsStr,
@@ -554,10 +597,12 @@ export default function GOA() {
 
     const info = { date:delDate, slot:timeSlot, total:tot, name:cName, method:deliveryMethod };
     setOrderInfo(info);
-    setCart([]);setStep(0);setCartOpen(false);setNotes({});setCName("");setCPhone("");setCEmail("");setCAddr("");setCNote("");setDelDate(null);setTimeSlot("");setPhoneTouched(false);setDeliveryMethod("deliver");
+    setCart([]);setStep(0);setCartOpen(false);setNotes({});setCName("");setCPhone("");setCEmail("");setCAddr("");setCNote("");setDelDate(null);setTimeSlot("");setPhoneTouched(false);setDeliveryMethod("deliver");setAddrCity("");setEmailTouched(false);
   };
 
-  const canPlace = cName.trim() && phoneValid && (deliveryMethod==="pickup" || (cAddr.trim() && delDate && timeSlot));
+  const phoneValid = /^05\d{8}$/.test(cPhone.replace(/[\s\-()]/g,""));
+  const phoneError = phoneTouched && cPhone.trim() && !phoneValid;
+  const canPlace = cName.trim() && phoneValid && emailValid && (deliveryMethod==="pickup" || (cAddr.trim() && addrCity && delDate && timeSlot));
 
   /* Auth helpers — Firebase */
   const doAuth=async(mode)=>{
@@ -628,7 +673,7 @@ export default function GOA() {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <button style={{cursor:"pointer",padding:"4px 10px",border:"1px solid #E5DDD0",borderRadius:18,background:"transparent",fontSize:10.5,fontFamily:"inherit",color:"#2C2416",transition:"all 0.3s"}} onClick={()=>setLang(lang==="en"?"he":"en")}>{lang==="en"?"עברית":"EN"}</button>
-          {user?<button style={{cursor:"pointer",padding:"4px 10px",border:"1px solid #E5DDD0",borderRadius:18,background:"transparent",fontSize:10,fontFamily:"inherit",color:"#8B7355"}} title={user.email} onClick={doLogout}>👤</button>
+          {user?<button style={{cursor:"pointer",padding:"4px 10px",border:"1px solid #E5DDD0",borderRadius:18,background:"transparent",fontSize:10,fontFamily:"inherit",color:"#8B7355"}} title={user.email} onClick={()=>go("profile")}>👤</button>
           :<button style={{cursor:"pointer",padding:"4px 10px",border:"1px solid #E5DDD0",borderRadius:18,background:"transparent",fontSize:10,fontFamily:"inherit",color:"#2C2416"}} onClick={()=>{setAuthModal("login");setAuthErr("");}}>{t.nav.login}</button>}
           <button className="cnb" onClick={()=>{setCartOpen(true);setStep(0)}}>🛒{cc>0&&<span className="nb">{cc}</span>}</button>
           <button className="ham" onClick={()=>setMobileMenu(!mobileMenu)}>☰</button>
@@ -723,21 +768,62 @@ export default function GOA() {
 
       {/* ═══ PRODUCT MODAL (Add/Edit) ═══ */}
       {prodModal&&(<div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(44,36,22,0.5)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(5px)",animation:"fadeIn 0.15s",padding:20}} onClick={()=>setProdModal(null)}>
-        <div style={{background:"#FDFBF7",borderRadius:16,maxWidth:520,width:"100%",padding:28,animation:"scaleIn 0.25s",maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{background:"#FDFBF7",borderRadius:16,maxWidth:520,width:"100%",padding:28,animation:"scaleIn 0.25s",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,marginBottom:20}}>{prodModal.mode==="add"?(lang==="en"?"Add Product":"הוסף מוצר"):(lang==="en"?"Edit Product":"ערוך מוצר")}</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>Name (EN)</div><input className="fi" value={prodModal.form.n?.en||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,n:{...prodModal.form.n,en:e.target.value}}})} style={{direction:"ltr"}}/></div>
             <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>שם (HE)</div><input className="fi" value={prodModal.form.n?.he||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,n:{...prodModal.form.n,he:e.target.value}}})}/></div>
             <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>Origin (EN)</div><input className="fi" value={prodModal.form.o?.en||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,o:{...prodModal.form.o,en:e.target.value}}})} style={{direction:"ltr"}}/></div>
             <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>מקור (HE)</div><input className="fi" value={prodModal.form.o?.he||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,o:{...prodModal.form.o,he:e.target.value}}})}/></div>
-            <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>{t.admin.price} (₪)</div><input className="fi" type="number" min="0" step="0.5" value={prodModal.form.priceStr||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,priceStr:e.target.value}})} style={{direction:"ltr"}}/></div>
             <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>{t.admin.stock} ({lang==="en"?"qty":"כמות"})</div><input className="fi" type="number" min="0" value={prodModal.form.stockStr||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,stockStr:e.target.value}})} style={{direction:"ltr"}}/></div>
             <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>{t.admin.cat}</div><select className="fi" value={prodModal.form.cat} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,cat:e.target.value}})}>{categories.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label[lang]}</option>)}</select></div>
-            <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>{t.admin.unit}</div><select className="fi" value={prodModal.form.u} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,u:e.target.value}})}>{UNIT_KEYS.map(u=><option key={u} value={u}>{t.product[u]}</option>)}</select></div>
-            <div style={{gridColumn:"1/-1"}}><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>{t.admin.image}</div><input className="fi" value={prodModal.form.img||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,img:e.target.value}})} placeholder="🍏 or https://..."/></div>
-            <div style={{gridColumn:"1/-1",display:"flex",gap:8,flexWrap:"wrap"}}>
-              {[["organic","🌿 Organic"],["seasonal","🍂 Seasonal"],["pop","⭐ Popular"]].map(([k,l])=>(<label key={k} style={{display:"flex",alignItems:"center",gap:5,fontSize:12,cursor:"pointer"}}><input type="checkbox" checked={!!prodModal.form[k]} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,[k]:e.target.checked}})}/>{l}</label>))}
+          </div>
+
+          {/* Dual pricing — enable/disable per unit type */}
+          <div style={{marginTop:14,marginBottom:10}}>
+            <div style={{fontSize:9,opacity:0.4,marginBottom:8,textTransform:"uppercase",letterSpacing:0.8}}>{lang==="en"?"Pricing (enable unit types)":"תמחור (הפעל סוגי יחידות)"}</div>
+            {[["perKg",lang==="en"?"Per kg":"לפי ק״ג"],["perUnit",lang==="en"?"Per unit":"לפי יחידה"],["perPack",lang==="en"?"Per pack":"לפי חבילה"]].map(([uKey,uLabel])=>{
+              const prices = prodModal.form.prices||{};
+              const enabled = prodModal.form.enabledUnits?.[uKey] ?? (prodModal.form.u===uKey);
+              return(
+                <div key={uKey} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,padding:"8px 10px",background:enabled?"#FFF5E5":"#F5F5F5",borderRadius:8,border:`1px solid ${enabled?"#C4A97D":"#E5DDD0"}`}}>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",minWidth:90}}>
+                    <input type="checkbox" checked={!!enabled} onChange={e=>{
+                      const eu={...(prodModal.form.enabledUnits||{}),[uKey]:e.target.checked};
+                      // if only one enabled, also set main u
+                      const active=Object.entries(eu).filter(([,v])=>v).map(([k])=>k);
+                      setProdModal({...prodModal,form:{...prodModal.form,enabledUnits:eu,u:active.length===1?active[0]:(prodModal.form.u||uKey)}});
+                    }}/>
+                    <span style={{fontSize:12.5,fontWeight:500}}>{uLabel}</span>
+                  </label>
+                  {enabled&&<div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:12,opacity:0.5}}>₪</span>
+                    <input className="fi" type="number" min="0" step="0.5" placeholder="0.00"
+                      value={prices[uKey]||prodModal.form.priceStr||""}
+                      onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,prices:{...prices,[uKey]:e.target.value},priceStr:Object.keys(prodModal.form.enabledUnits||{}).filter(k=>(prodModal.form.enabledUnits||{})[k]).length<=1?e.target.value:prodModal.form.priceStr}})}
+                      style={{direction:"ltr",padding:"6px 10px",fontSize:13}}/>
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Image — URL or upload */}
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:9,opacity:0.4,marginBottom:6,textTransform:"uppercase",letterSpacing:0.8}}>{t.admin.image}</div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <input className="fi" value={prodModal.form.img||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,img:e.target.value}})} placeholder="🍏 or https://..." style={{flex:1}}/>
+              <label style={{cursor:"pointer",padding:"8px 12px",background:"#2C2416",color:"#FDFBF7",borderRadius:8,fontSize:11.5,fontFamily:"inherit",whiteSpace:"nowrap",position:"relative"}}>
+                {imgUploading?(lang==="en"?"Uploading...":"מעלה..."):(lang==="en"?"Upload 📷":"העלה 📷")}
+                <input type="file" accept="image/*" style={{position:"absolute",inset:0,opacity:0,cursor:"pointer"}} onChange={e=>{if(e.target.files[0])uploadImage(e.target.files[0],(url)=>setProdModal(prev=>({...prev,form:{...prev.form,img:url}})));}}/>
+              </label>
             </div>
+            {prodModal.form.img&&prodModal.form.img.startsWith("http")&&<img src={prodModal.form.img} alt="preview" style={{width:60,height:60,objectFit:"cover",borderRadius:8,marginTop:6,border:"1px solid #E5DDD0"}}/>}
+            {prodModal.form.img&&!prodModal.form.img.startsWith("http")&&<span style={{fontSize:40,display:"block",marginTop:6}}>{prodModal.form.img}</span>}
+          </div>
+
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {[["organic","🌿 Organic"],["seasonal","🍂 Seasonal"],["pop","⭐ Popular"]].map(([k,l])=>(<label key={k} style={{display:"flex",alignItems:"center",gap:5,fontSize:12,cursor:"pointer"}}><input type="checkbox" checked={!!prodModal.form[k]} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,[k]:e.target.checked}})}/>{l}</label>))}
           </div>
           {(prodModal.form.priceStr&&parseFloat(prodModal.form.priceStr)<=0)&&<div style={{color:"#D94F4F",fontSize:11,marginTop:8}}>{lang==="en"?"Price must be positive":"מחיר חייב להיות חיובי"}</div>}
           <div style={{display:"flex",gap:8,marginTop:18}}><button className="mb" style={{flex:1}} onClick={saveProdModal}>{t.admin.save}</button><button className="gb" style={{flex:1}} onClick={()=>setProdModal(null)}>{t.admin.cancel}</button></div>
@@ -879,8 +965,13 @@ export default function GOA() {
                       style={{direction:"ltr",width:"100%",...(phoneError?{borderColor:"#D94F4F",boxShadow:"0 0 0 3px rgba(217,79,79,0.08)"}:{})}}/>
                     {phoneError&&<div style={{fontSize:10.5,color:"#D94F4F",marginTop:4}}>{lang==="en"?"Enter a valid Israeli mobile (05XXXXXXXX)":"הזן מספר נייד ישראלי (05XXXXXXXX)"}</div>}
                   </div>
-                  <Inp val={cEmail} set={setCEmail} ph={t.cart.email} type="email"/>
+                  <Inp val={cEmail} set={setCEmail} ph={t.cart.email} type="email" error={emailError} onBlur={()=>setEmailTouched(true)}/>
+                  {emailError&&<div style={{fontSize:10.5,color:"#D94F4F",marginTop:-6}}>{lang==="en"?"Enter a valid email address":"כתובת אימייל לא תקינה"}</div>}
                   {deliveryMethod==="deliver"&&<>
+                    <select className="fi" value={addrCity} onChange={e=>setAddrCity(e.target.value)} style={{color:addrCity?"#2C2416":"#B0A090"}}>
+                      <option value="">{lang==="en"?"Select City":"בחר עיר"}</option>
+                      {IL_CITIES.map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
                     <Inp val={cAddr} set={setCAddr} ph={t.cart.address} req/>
                     <div style={{fontSize:10.5,opacity:0.3,marginTop:-6}}>{t.cart.addressHint}</div>
                   </>}
@@ -963,12 +1054,18 @@ export default function GOA() {
                 <div style={{letterSpacing:3,fontSize:9.5,textTransform:"uppercase",opacity:0.35,marginBottom:8}}>{t.freshToday}</div>
                 <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400}}>{t.seasonal}</h2>
               </div>
-              <div className="pg" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-                {products.filter(p=>(p.seasonal||p.organic)&&(p.stock??0)>0).slice(0,8).map((p,i)=><PCard key={p.id} p={p} i={i} q={cQty(p.id)} anim={addedAnim[p.id]} onAdd={()=>addToCart(p)} onDec={()=>setQ(p.id,cQty(p.id)-1)} onInc={()=>setQ(p.id,cQty(p.id)+1)} onQv={setQv} lang={lang} t={t} S={S}/>)}
-              </div>
-              <div style={{textAlign:"center",marginTop:36}}>
-                <button className="gb" style={{maxWidth:200,borderRadius:28,letterSpacing:1.2,textTransform:"uppercase",fontSize:11.5}} onClick={()=>go("shop")}>{t.viewAll}</button>
-              </div>
+              {(()=>{
+                const featured = products.filter(p=>(p.seasonal||p.organic)&&(p.stock??0)>0);
+                return <>
+                  <div className="pg" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+                    {featured.slice(0,homeCount).map((p,i)=><PCard key={p.id} p={p} i={i} q={cQty(p.id)} anim={addedAnim[p.id]} onAdd={()=>addToCart(p)} onDec={()=>setQ(p.id,cQty(p.id)-1)} onInc={()=>setQ(p.id,cQty(p.id)+1)} onQv={setQv} lang={lang} t={t} S={S}/>)}
+                  </div>
+                  <div style={{textAlign:"center",marginTop:36,display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+                    {homeCount<featured.length&&<button className="gb" style={{maxWidth:200,borderRadius:28,letterSpacing:1.2,textTransform:"uppercase",fontSize:11.5}} onClick={()=>setHomeCount(c=>c+8)}>{lang==="en"?"Load More ↓":"עוד מוצרים ↓"}</button>}
+                    <button className="gb" style={{maxWidth:200,borderRadius:28,letterSpacing:1.2,textTransform:"uppercase",fontSize:11.5}} onClick={()=>go("shop")}>{t.viewAll}</button>
+                  </div>
+                </>;
+              })()}
             </div>
           </div>
         )}
@@ -1117,6 +1214,106 @@ export default function GOA() {
                 <button className="gb" style={{fontSize:12,padding:"8px 16px"}} onClick={()=>reorder(order)}>🔄 {t.myOrders.reorder}</button>
               </div>
             ))}
+          </div>
+        )}
+        {/* PROFILE */}
+        {page==="profile"&&user&&(
+          <div style={{maxWidth:680,margin:"0 auto",padding:"32px 24px 60px",animation:"fadeIn 0.3s"}}>
+            <div style={{textAlign:"center",marginBottom:28}}>
+              <div style={{fontSize:40,marginBottom:8}}>👤</div>
+              <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:400,marginBottom:4}}>{t.profile.title}</h2>
+              <div style={{fontSize:12,opacity:0.45}}>{user.email}</div>
+              <button onClick={doLogout} style={{marginTop:10,cursor:"pointer",padding:"5px 14px",border:"1px solid #E5DDD0",borderRadius:18,background:"transparent",fontSize:11,fontFamily:"inherit",color:"#8B7355"}}>{t.nav.logout}</button>
+            </div>
+            {/* Tab nav */}
+            <div style={{display:"flex",gap:6,marginBottom:24,flexWrap:"wrap"}}>
+              {[["orders",lang==="en"?"Orders":"הזמנות"],["addresses",lang==="en"?"Addresses":"כתובות"],["payment",lang==="en"?"Payment":"תשלום"],["loyalty",lang==="en"?"Loyalty":"מועדון"]].map(([tab,label])=>(
+                <button key={tab} className={`cb ${profilePage===tab?"on":""}`} onClick={()=>setProfilePage(tab)}>{label}</button>
+              ))}
+            </div>
+
+            {/* Orders tab */}
+            {profilePage==="orders"&&(userOrderHistory.length===0?(
+              <div style={{textAlign:"center",padding:"40px 0"}}><div style={{fontSize:34,opacity:0.2,marginBottom:10}}>📦</div><div style={{opacity:0.5}}>{t.myOrders.empty}</div><button className="mb" style={{maxWidth:200,margin:"16px auto 0"}} onClick={()=>go("shop")}>{t.shopNow}</button></div>
+            ):userOrderHistory.map(order=>(
+              <div key={order.id} style={{background:"#fff",border:"1px solid #F0EBE3",borderRadius:12,padding:18,marginBottom:12,animation:"fadeUp 0.3s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:8,fontSize:12,opacity:0.5}}>
+                  <span>{new Date(order.date).toLocaleDateString(lang==="he"?"he-IL":"en-US",{day:"numeric",month:"short",year:"numeric"})}</span>
+                  <span style={{fontWeight:600,color:"#8B7355"}}>₪{order.total}</span>
+                </div>
+                {order.items.map((item,j)=>(<div key={j} style={{display:"flex",justifyContent:"space-between",fontSize:12.5,padding:"3px 0"}}><span>{item.img} {item.n[lang]} ×{item.qty}</span><span style={{opacity:0.5}}>₪{fmtPrice(item.price*item.qty)}</span></div>))}
+                <button className="gb" style={{fontSize:12,padding:"8px 16px",marginTop:10}} onClick={()=>reorder(order)}>🔄 {t.myOrders.reorder}</button>
+              </div>
+            )))}
+
+            {/* Addresses tab */}
+            {profilePage==="addresses"&&(<div>
+              {savedAddresses.length===0&&!showAddrForm&&<div style={{textAlign:"center",padding:"32px 0",opacity:0.4,fontSize:13}}>{t.profile.noAddr}</div>}
+              {savedAddresses.map(a=>(
+                <div key={a.id} style={{background:"#fff",border:"1px solid #F0EBE3",borderRadius:12,padding:16,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div><div style={{fontWeight:500,fontSize:13.5}}>{a.street}</div><div style={{fontSize:12,opacity:0.5,marginTop:3}}>{a.city}{a.floor?` · ${lang==="en"?"Floor":"קומה"} ${a.floor}`:""}{a.apt?` · ${lang==="en"?"Apt":"דירה"} ${a.apt}`:""}{a.entry?` · ${lang==="en"?"Code":"קוד"} ${a.entry}`:""}</div></div>
+                  <button onClick={()=>deleteAddress(a.id)} style={{cursor:"pointer",background:"none",border:"1px solid #F0EBE3",borderRadius:6,padding:"4px 8px",fontSize:11,color:"#D94F4F",fontFamily:"inherit"}}>{t.profile.deleteAddr}</button>
+                </div>
+              ))}
+              {showAddrForm?(
+                <div style={{background:"#FAF7F0",borderRadius:12,padding:18,border:"1px solid #E5DDD0",marginTop:10}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                    <div style={{gridColumn:"1/-1"}}><input className="fi" placeholder={t.profile.street} value={newAddr.street} onChange={e=>setNewAddr({...newAddr,street:e.target.value})}/></div>
+                    <select className="fi" value={addrCity} onChange={e=>setAddrCity(e.target.value)} style={{color:addrCity?"#2C2416":"#B0A090"}}>
+                      <option value="">{t.profile.city}</option>
+                      {IL_CITIES.map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input className="fi" placeholder={t.profile.floor} value={newAddr.floor} onChange={e=>setNewAddr({...newAddr,floor:e.target.value})}/>
+                    <input className="fi" placeholder={t.profile.apt} value={newAddr.apt} onChange={e=>setNewAddr({...newAddr,apt:e.target.value})}/>
+                    <input className="fi" placeholder={t.profile.entry} value={newAddr.entry} onChange={e=>setNewAddr({...newAddr,entry:e.target.value})}/>
+                  </div>
+                  <div style={{display:"flex",gap:8}}><button className="mb" style={{flex:1}} onClick={saveAddress}>{t.profile.saveAddr}</button><button className="gb" style={{flex:1}} onClick={()=>setShowAddrForm(false)}>{t.admin.cancel}</button></div>
+                </div>
+              ):<button className="gb" style={{width:"100%",marginTop:8}} onClick={()=>setShowAddrForm(true)}>{t.profile.addAddr}</button>}
+            </div>)}
+
+            {/* Payment tab */}
+            {profilePage==="payment"&&(<div>
+              <div style={{background:"#FFF5E5",border:"1px solid #E5D4B3",borderRadius:10,padding:12,marginBottom:16,fontSize:12,color:"#7A5C1E"}}>{lang==="en"?"Card details are stored locally on your device only — not on our servers.":"פרטי הכרטיס נשמרים רק במכשיר שלך — לא בשרתים שלנו."}</div>
+              {savedCards.length===0&&!showCardForm&&<div style={{textAlign:"center",padding:"32px 0",opacity:0.4,fontSize:13}}>{t.profile.noCards}</div>}
+              {savedCards.map(c=>(
+                <div key={c.id} style={{background:"#fff",border:"1px solid #F0EBE3",borderRadius:12,padding:16,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div><div style={{fontWeight:500,fontSize:13.5}}>•••• •••• •••• {c.last4}</div><div style={{fontSize:12,opacity:0.5,marginTop:3}}>{c.name} · {c.exp}</div></div>
+                  <button onClick={()=>deleteCard(c.id)} style={{cursor:"pointer",background:"none",border:"1px solid #F0EBE3",borderRadius:6,padding:"4px 8px",fontSize:11,color:"#D94F4F",fontFamily:"inherit"}}>{t.profile.deleteCard}</button>
+                </div>
+              ))}
+              {showCardForm?(
+                <div style={{background:"#FAF7F0",borderRadius:12,padding:18,border:"1px solid #E5DDD0",marginTop:10}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:12}}>
+                    <input className="fi" placeholder={t.profile.cardNum} value={newCard.num} onChange={e=>setNewCard({...newCard,num:e.target.value})} style={{direction:"ltr"}} maxLength={19}/>
+                    <input className="fi" placeholder={t.profile.cardName} value={newCard.name} onChange={e=>setNewCard({...newCard,name:e.target.value})}/>
+                    <input className="fi" placeholder={t.profile.cardExp} value={newCard.exp} onChange={e=>setNewCard({...newCard,exp:e.target.value})} style={{direction:"ltr"}} maxLength={5}/>
+                  </div>
+                  <div style={{display:"flex",gap:8}}><button className="mb" style={{flex:1}} onClick={saveCard}>{t.profile.saveCard}</button><button className="gb" style={{flex:1}} onClick={()=>setShowCardForm(false)}>{t.admin.cancel}</button></div>
+                </div>
+              ):<button className="gb" style={{width:"100%",marginTop:8}} onClick={()=>setShowCardForm(true)}>{t.profile.addCard}</button>}
+            </div>)}
+
+            {/* Loyalty tab */}
+            {profilePage==="loyalty"&&(
+              <div>
+                <div className="lc" style={{marginBottom:20}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+                    <div><div style={{fontSize:9,letterSpacing:2.5,textTransform:"uppercase",opacity:0.4,marginBottom:5}}>{t.profile.tier}</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#C4A97D"}}>{t.profile.silver}</div></div>
+                    <div style={{textAlign:rtl?"left":"right"}}><div style={{fontSize:9,letterSpacing:2.5,textTransform:"uppercase",opacity:0.4,marginBottom:5}}>{t.profile.points}</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:"#C4A97D"}}>{userOrderHistory.reduce((s,o)=>s+Math.floor((o.total||0)/10),0)}</div></div>
+                  </div>
+                  <div className="pb2"><div className="pf" style={{width:`${Math.min(100,userOrderHistory.reduce((s,o)=>s+Math.floor((o.total||0)/10),0)/5)}%`}}/></div>
+                  <div style={{marginTop:6,fontSize:10,opacity:0.35}}>{Math.max(0,500-userOrderHistory.reduce((s,o)=>s+Math.floor((o.total||0)/10),0))} {lang==="en"?"pts to Gold":"נקודות לזהב"}</div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  {[{i:"⭐",t:t.loyalty.earn},{i:"🎁",t:t.loyalty.redeem},{i:"🚚",t:t.loyalty.freeDel},{i:"💎",t:t.loyalty.exclusive}].map((x,j)=>(
+                    <div key={j} style={{background:"#fff",border:"1px solid #F0EBE3",borderRadius:12,padding:16,display:"flex",gap:10,alignItems:"flex-start"}}>
+                      <span style={{fontSize:20}}>{x.i}</span><span style={{fontSize:12.5,lineHeight:1.5}}>{x.t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

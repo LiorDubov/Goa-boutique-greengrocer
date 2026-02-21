@@ -170,40 +170,43 @@ const QtyBtn = ({q,onAdd,onDec,onInc,anim,addL,addedL,sm,oos,oosL,lowStock}) => 
 };
 
 const PCard = ({p,i,sm,q,anim,onAdd,onDec,onInc,onQv,lang,t,S}) => (
-  <div className="pcard" style={{animation:`fadeUp 0.4s ${i*0.04}s both`,opacity:(p.stock<=0)?0.5:1}} onClick={()=>onQv(p)}>
+  <div className="pcard" style={{animation:`fadeUp 0.4s ${i*0.05}s both`,opacity:(p.stock<=0)?0.5:1}} onClick={()=>onQv(p)}>
     {q>0&&<div className="cbadge">{q}</div>}
-    <div className="pcard__img" style={{height:sm?120:150,position:"relative",overflow:"hidden",background:"linear-gradient(145deg,#FAF7F0 0%,#EDE7DA 50%,#F5EFE3 100%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <span style={{fontSize:sm?52:64,filter:"drop-shadow(0 4px 8px rgba(44,36,22,0.08))",transition:"transform 0.4s"}}>{p.img}</span>
-      <div style={{position:"absolute",top:8,display:"flex",gap:4,flexWrap:"wrap",maxWidth:"70%",[S]:8}}>
+    <div className="pcard__img" style={{height:sm?118:152,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+      {p.img?.startsWith("http")
+        ? <img src={p.img} alt={p.n[lang]} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+        : <span className="pcard__img" style={{fontSize:sm?50:64,height:"auto",background:"none",display:"block",padding:sm?"16px":"20px"}}>{p.img}</span>
+      }
+      <div style={{position:"absolute",top:8,display:"flex",gap:4,flexWrap:"wrap",maxWidth:"75%",[S]:8}}>
         {p.organic&&<span className="tag otag">{t.organic}</span>}
         {p.seasonal&&<span className="tag stag">{t.seasonalTag}</span>}
         {p.pop&&<span className="tag ptag">{t.popular}</span>}
       </div>
     </div>
-    <div style={{padding:sm?"8px 10px 10px":"10px 14px 14px"}}>
-      <div className="pname" style={{fontSize:sm?13:14.5,marginBottom:2,fontWeight:600,color:"#2C2416"}}>{p.n[lang]}</div>
-      <div style={{fontSize:11.5,opacity:0.55,marginBottom:6,color:"#8B7355"}}>{p.o?.[lang]||""}</div>
-      {/* Price display — show all enabled units or just the primary */}
-      <div style={{marginBottom:10}}>
+    <div className="pcard__body">
+      <div className="pname" style={{fontSize:sm?12.5:14}}>{p.n[lang]}</div>
+      <div className="porigin">{p.o?.[lang]||""}</div>
+      <div className="pprice-wrap">
         {p.enabledUnits && Object.keys(p.enabledUnits).filter(k=>p.enabledUnits[k]).length>1 ? (
-          // Multi-unit: show each price on its own line
-          <div style={{display:"flex",flexDirection:"column",gap:2}}>
+          <div style={{display:"flex",flexDirection:"column",gap:1}}>
             {UNIT_KEYS.filter(k=>p.enabledUnits?.[k]).map(k=>(
-              <div key={k} style={{display:"flex",alignItems:"baseline",gap:3}}>
-                <span style={{fontFamily:"'Playfair Display',serif",fontSize:sm?14:16,color:"#8B7355"}}>₪{fmtPrice(p.unitPrices?.[k]||p.price)}</span>
-                <span style={{fontSize:10,opacity:0.5}}>{UNIT_LABELS[lang]?.[k]||""}</span>
+              <div key={k} style={{display:"flex",alignItems:"baseline",gap:2}}>
+                <span className="pprice" style={{fontSize:sm?14:16}}>₪{fmtPrice(p.unitPrices?.[k]||p.price)}</span>
+                <span className="punit">{UNIT_LABELS[lang]?.[k]||""}</span>
               </div>
             ))}
           </div>
         ):(
-          // Single unit: price + unit inline
-          <div style={{display:"flex",alignItems:"baseline",gap:3}}>
-            <span style={{fontFamily:"'Playfair Display',serif",fontSize:sm?15:17,color:"#8B7355"}}>₪{fmtPrice(p.price)}</span>
-            <span style={{fontSize:10.5,opacity:0.5}}>{UNIT_LABELS[lang]?.[p.u]||t.product[p.u]||""}</span>
+          <div style={{display:"flex",alignItems:"baseline",gap:2}}>
+            <span className="pprice" style={{fontSize:sm?15:18}}>₪{fmtPrice(p.price)}</span>
+            <span className="punit">{UNIT_LABELS[lang]?.[p.u]||t.product[p.u]||""}</span>
           </div>
         )}
       </div>
-      <QtyBtn q={q} onAdd={onAdd} onDec={onDec} onInc={onInc} anim={anim} addL={t.product.add} addedL={t.product.added} sm={sm} oos={(p.stock<=0)} oosL={t.product.oos}/>
+      <QtyBtn q={q} onAdd={onAdd} onDec={onDec} onInc={onInc} anim={anim}
+        addL={t.product.add} addedL={t.product.added} sm={sm}
+        oos={(p.stock<=0)} oosL={t.product.oos}
+        lowStock={p.stock>0&&p.stock<=5?p.stock:0}/>
     </div>
   </div>
 );
@@ -751,13 +754,29 @@ export default function GOA() {
     <div dir={dir} style={{fontFamily:rtl?"'Noto Sans Hebrew','Segoe UI',sans-serif":"'Cormorant Garamond',Georgia,serif",background:"#FDFBF7",color:"#2C2416",minHeight:"100vh",width:"100%"}}>
 
       {/* ═══ BANNER ═══ */}
-      <div className="banner">{t.banner}</div>
+      <div className="banner">
+        <div className="banner-track">
+          {[
+            lang==="en"?"🌿 Fresh from local farms":"🌿 ישר מהחקלאים המקומיים",
+            lang==="en"?"🍅 Seasonal & organic produce":"🍅 תוצרת עונתית ואורגנית",
+            lang==="en"?"🚚 Free delivery over ₪250":"🚚 משלוח חינם מעל ₪250",
+            lang==="en"?"🌿 Fresh from local farms":"🌿 ישר מהחקלאים המקומיים",
+            lang==="en"?"🍅 Seasonal & organic produce":"🍅 תוצרת עונתית ואורגנית",
+            lang==="en"?"🚚 Free delivery over ₪250":"🚚 משלוח חינם מעל ₪250",
+          ].map((txt,i)=>(
+            <span key={i}>{txt}</span>
+          ))}
+        </div>
+      </div>
 
       {/* ═══ NAV ═══ */}
       <nav className="topnav">
-        <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>go("home")}>
-          <span style={{fontSize:28,fontWeight:700,fontFamily:"'Playfair Display',serif",letterSpacing:3}}>{rtl?"גואה":"GOA"}</span>
-          <span style={{fontSize:10,letterSpacing:rtl?0:2,textTransform:rtl?"none":"uppercase",opacity:0.5,marginTop:2,fontFamily:rtl?"'Noto Sans Hebrew',sans-serif":"inherit"}}>{rtl?"ירקניית בוטיק":"boutique"}</span>
+        <div className="logo-wrap" onClick={()=>go("home")}>
+          <div className="logo-mark">G</div>
+          <div className="logo-text">
+            <span className="logo-name">{rtl?"גואה":"GOA"}</span>
+            <span className="logo-sub">{rtl?"ירקניית בוטיק":"boutique greengrocer"}</span>
+          </div>
         </div>
         <div className="dn" style={{display:"flex",gap:22,alignItems:"center"}}>
           {["home","shop","subscriptions","loyalty","about"].map(p=>(
@@ -1240,38 +1259,62 @@ export default function GOA() {
         {/* HOME */}
         {page==="home"&&(
           <div style={{animation:"fadeIn 0.5s"}}>
-            <div style={{minHeight:"60vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"40px 24px 48px",position:"relative",background:"linear-gradient(180deg,#FDFBF7 0%,#F5EFE3 55%,#FDFBF7 100%)"}}>
-              <div style={{position:"absolute",top:"14%",[S]:"12%",fontSize:70,opacity:0.04,animation:"float 6s ease-in-out infinite"}}>🍋</div>
-              <div style={{position:"absolute",bottom:"18%",[E]:"10%",fontSize:60,opacity:0.04,animation:"float 7s ease-in-out infinite 1.5s"}}>🌿</div>
-              <div style={{opacity:heroVis?1:0,transform:heroVis?"translateY(0)":"translateY(20px)",transition:"all 0.8s cubic-bezier(0.2,0,0,1)"}}>
-                <div style={{letterSpacing:5,fontSize:10,textTransform:"uppercase",opacity:0.4,marginBottom:16}}>{t.hero.subtitle}</div>
-                <h1 className="ht" style={{fontFamily:"'Playfair Display',serif",fontSize:62,fontWeight:400,lineHeight:1.05,marginBottom:16}}>GOA</h1>
-                <p style={{fontSize:18,fontWeight:300,opacity:0.55,marginBottom:32,fontStyle:"italic"}}>{t.hero.tagline}</p>
-                <button className="mb" style={{maxWidth:240,borderRadius:28,fontSize:12.5,letterSpacing:1.8,textTransform:"uppercase",padding:"14px 40px"}} onClick={()=>go("shop")}>{t.hero.cta}</button>
+            <div className="hero">
+              {/* Floating produce decorations */}
+              <div className="hero-deco" style={{top:"12%",[S]:"8%",animation:"float 7s ease-in-out infinite"}}>🍋</div>
+              <div className="hero-deco" style={{bottom:"20%",[E]:"7%",animation:"float 9s ease-in-out infinite 1s",fontSize:"clamp(36px,5vw,64px)"}}>🌿</div>
+              <div className="hero-deco" style={{top:"18%",[E]:"12%",animation:"float 8s ease-in-out infinite 2s",fontSize:"clamp(32px,4vw,56px)"}}>🍅</div>
+              <div className="hero-deco" style={{bottom:"15%",[S]:"10%",animation:"float 6s ease-in-out infinite 0.5s",fontSize:"clamp(28px,3.5vw,50px)"}}>🥦</div>
+
+              <div style={{position:"relative",zIndex:1,opacity:heroVis?1:0,transform:heroVis?"translateY(0)":"translateY(24px)",transition:"all 0.9s cubic-bezier(0.2,0,0,1)"}}>
+                <div className="hero-eyebrow">{t.hero.subtitle}</div>
+                <h1 className="hero-headline ht">
+                  {rtl ? <>גואה <em>בוטיק</em></> : <>GOA <em>boutique</em></>}
+                </h1>
+                <p className="hero-sub">{t.hero.tagline}</p>
+                <button className="hero-cta" onClick={()=>go("shop")}>
+                  <span>🛒</span>
+                  <span>{t.hero.cta}</span>
+                </button>
               </div>
-              <div style={{position:"absolute",bottom:24,letterSpacing:3,fontSize:9,opacity:0.2,textTransform:"uppercase"}}>{t.hero.since}</div>
+              <div style={{position:"absolute",bottom:16,letterSpacing:4,fontSize:8.5,opacity:0.18,textTransform:"uppercase",fontFamily:"'Lato',sans-serif",zIndex:1}}>{t.hero.since}</div>
+            </div>
+
+            {/* Trust badges */}
+            <div className="hero-badges">
+              {[
+                {icon:"🌱",text:lang==="en"?"100% Fresh":"100% טרי"},
+                {icon:"🏡",text:lang==="en"?"Local farmers":"חקלאים מקומיים"},
+                {icon:"🚚",text:lang==="en"?"Same-day delivery":"משלוח ביום ההזמנה"},
+                {icon:"♻️",text:lang==="en"?"Eco packaging":"אריזה ירוקה"},
+              ].map((b,i)=>(
+                <div key={i} className="hero-badge">
+                  <span className="hero-badge-icon">{b.icon}</span>
+                  <span>{b.text}</span>
+                </div>
+              ))}
             </div>
 
             {/* Category quick links */}
-            <div style={{maxWidth:600,margin:"0 auto",padding:"32px 24px 16px"}}>
-              <div style={{textAlign:"center",marginBottom:20}}>
-                <div style={{letterSpacing:3,fontSize:9.5,textTransform:"uppercase",opacity:0.35,marginBottom:8}}>{t.catQuick}</div>
+            <div style={{maxWidth:680,margin:"0 auto",padding:"44px 24px 20px"}}>
+              <div className="section-head">
+                <div className="section-tag"><span className="section-divider"/>{t.catQuick}<span className="section-divider"/></div>
               </div>
               <div className="cql">
                 {categories.map(c=>(
                   <div key={c.id} className="cqi" onClick={()=>{setCat(c.id);go("shop",true)}}>
-                    <div style={{fontSize:28,marginBottom:6}}>{c.icon}</div>
-                    <div style={{fontSize:11.5,fontWeight:500,textTransform:"uppercase",letterSpacing:0.5}}>{c.label[lang]}</div>
+                    <span className="cqi-icon">{c.icon}</span>
+                    <div className="cqi-label">{c.label[lang]}</div>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Featured */}
-            <div style={{maxWidth:1060,margin:"0 auto",padding:"28px 24px 50px"}}>
-              <div style={{textAlign:"center",marginBottom:36}}>
-                <div style={{letterSpacing:3,fontSize:9.5,textTransform:"uppercase",opacity:0.35,marginBottom:8}}>{t.freshToday}</div>
-                <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400}}>{t.seasonal}</h2>
+            <div style={{maxWidth:1060,margin:"0 auto",padding:"36px 24px 60px"}}>
+              <div className="section-head">
+                <div className="section-tag"><span className="section-divider"/>{t.freshToday}<span className="section-divider"/></div>
+                <h2 className="section-title">{t.seasonal}</h2>
               </div>
               {(()=>{
                 const featured = products.filter(p=>(p.seasonal||p.organic)&&(p.stock??0)>0);
@@ -1291,34 +1334,44 @@ export default function GOA() {
 
         {/* SHOP */}
         {page==="shop"&&(
-          <div style={{maxWidth:1060,margin:"0 auto",padding:"20px 24px 50px",animation:"fadeIn 0.3s"}}>
-            <div style={{textAlign:"center",marginBottom:24}}>
-              <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400,marginBottom:18}}>{t.nav.shop}</h2>
-              <div style={{position:"relative",maxWidth:360,margin:"0 auto 20px",display:"inline-block",width:"100%"}}>
-                <span style={{position:"absolute",[S]:13,top:"50%",transform:"translateY(-50%)",fontSize:14,opacity:0.25,cursor:"pointer"}} onClick={()=>searchRef.current?.focus()}>🔍</span>
-                <input ref={searchRef} className="si" type="text" placeholder={t.search} value={search} onChange={e=>setSearch(e.target.value)} style={{[`padding${rtl?"Right":"Left"}`]:38}}/>
-                {search&&<button onClick={()=>{setSearch("");searchRef.current?.focus()}} style={{position:"absolute",[E]:12,top:"50%",transform:"translateY(-50%)",cursor:"pointer",background:"none",border:"none",fontSize:13,opacity:0.3}}>✕</button>}
+          <div style={{maxWidth:1060,margin:"0 auto",padding:"32px 24px 60px",animation:"fadeIn 0.3s"}}>
+            {/* Shop header */}
+            <div style={{textAlign:"center",marginBottom:28}}>
+              <div className="section-tag" style={{justifyContent:"center",marginBottom:8}}>
+                <span className="section-divider"/>
+                {lang==="en"?"Our Market":"השוק שלנו"}
+                <span className="section-divider"/>
+              </div>
+              <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:400,color:"var(--ink)",marginBottom:18}}>{t.nav.shop}</h2>
+              {/* Search */}
+              <div style={{position:"relative",maxWidth:380,margin:"0 auto",display:"inline-block",width:"100%"}}>
+                <span style={{position:"absolute",[S]:14,top:"50%",transform:"translateY(-50%)",fontSize:14,opacity:0.3,cursor:"pointer"}} onClick={()=>searchRef.current?.focus()}>🔍</span>
+                <input ref={searchRef} className="si" type="text" placeholder={t.search} value={search} onChange={e=>setSearch(e.target.value)} style={{[`padding${rtl?"Right":"Left"}`]:42}}/>
+                {search&&<button onClick={()=>{setSearch("");searchRef.current?.focus()}} style={{position:"absolute",[E]:14,top:"50%",transform:"translateY(-50%)",cursor:"pointer",background:"none",border:"none",fontSize:13,opacity:0.35}}>✕</button>}
               </div>
             </div>
-            {/* Filter bar */}
-            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
-              <div style={{display:"flex",gap:5,flex:1,overflowX:"auto",paddingBottom:4,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
-                {[{id:"all",label:{en:"All",he:"הכל"}},{id:"organic",label:{en:"Organic",he:"אורגני"}},...categories].map(c=>(<button key={c.id} className={`cb ${cat===c.id?"on":""}`} style={{flexShrink:0}} onClick={()=>{setCat(c.id);if(c.id!=="all")setSearch("")}}>{c.label[lang]}</button>))}
+
+            {/* Filter panel */}
+            <div className="shop-filters">
+              <div className="filter-cats">
+                {[{id:"all",label:{en:"All",he:"הכל"},icon:"🛒"},{id:"organic",label:{en:"🌱 Organic",he:"🌱 אורגני"}},...categories.map(c=>({...c,label:{en:`${c.icon} ${c.label.en}`,he:`${c.icon} ${c.label.he}`}}))].map(c=>(
+                  <button key={c.id} className={`cb ${cat===c.id?"on":""} ${c.id==="organic"?"organic-btn":""}`}
+                    onClick={()=>{setCat(c.id);if(c.id!=="all")setSearch("")}}>
+                    {c.label[lang]}
+                  </button>
+                ))}
+                <div style={{marginInlineStart:"auto",position:"relative"}} onClick={e=>e.stopPropagation()}>
+                  <button className="sb" onClick={()=>setShowSort(!showSort)}>{t.sort.label} ▾</button>
+                  {showSort&&<div className="sd">{[["default","—"],["pAsc",t.sort.pAsc],["pDesc",t.sort.pDesc],["name",t.sort.name]].map(([v,l])=>(<button key={v} className={`so ${sortBy===v?"on":""}`} onClick={()=>{setSortBy(v);setShowSort(false)}}>{l}</button>))}</div>}
+                </div>
               </div>
-              <div style={{position:"relative"}} onClick={e=>e.stopPropagation()}>
-                <button className="sb" onClick={()=>setShowSort(!showSort)}>{t.sort.label} ▾</button>
-                {showSort&&<div className="sd">{[["default","—"],["pAsc",t.sort.pAsc],["pDesc",t.sort.pDesc],["name",t.sort.name]].map(([v,l])=>(<button key={v} className={`so ${sortBy===v?"on":""}`} onClick={()=>{setSortBy(v);setShowSort(false)}}>{l}</button>))}</div>}
+              <div className="filter-price-row">
+                <span className="filter-price-label">{t.filter.price}:</span>
+                <input type="range" className="ri" min={10} max={MAX_P} value={maxPrice} onChange={e=>setMaxPrice(+e.target.value)} style={{flex:1}}/>
+                <span style={{fontSize:12,fontWeight:600,color:"var(--earth)",minWidth:38,fontFamily:"'Playfair Display',serif"}}>₪{maxPrice}{maxPrice>=MAX_P?"+":""}</span>
+                <span className="filter-count">{filtered.length}/{products.length}</span>
+                {hasFilters&&<button className="clb" onClick={clearF}>{t.filter.clear}</button>}
               </div>
-            </div>
-            {/* Price */}
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6,padding:"6px 0"}}>
-              <span style={{fontSize:12,opacity:0.55,whiteSpace:"nowrap"}}>{t.filter.price}:</span>
-              <input type="range" className="ri" min={10} max={MAX_P} value={maxPrice} onChange={e=>setMaxPrice(+e.target.value)}/>
-              <span style={{fontSize:11.5,fontWeight:500,minWidth:34}}>₪{maxPrice}{maxPrice>=MAX_P?"+":""}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <span style={{fontSize:12,opacity:0.55}}>{t.filter.showing} {filtered.length} {t.filter.of} {products.length} {t.filter.products}</span>
-              {hasFilters&&<button className="clb" onClick={clearF}>{t.filter.clear}</button>}
             </div>
             <div className="pg" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
               {filtered.map((p,i)=><PCard key={p.id} p={p} i={i} sm q={cQty(p.id)} anim={addedAnim[p.id]} onAdd={()=>addToCart(p)} onDec={()=>setQ(p.id,cQty(p.id)-1)} onInc={()=>setQ(p.id,cQty(p.id)+1)} onQv={setQv} lang={lang} t={t} S={S}/>)}

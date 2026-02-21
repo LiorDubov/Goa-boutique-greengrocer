@@ -28,6 +28,11 @@ const catDoc = (id) => doc(db, "artifacts/goa-boutique-prod/public/data/categori
 
 /* ═══ CONFIG ═══ */
 const WA_PHONE = "972504445272";
+// Stripe — set your publishable key here (starts with pk_live_ or pk_test_)
+// Also set STRIPE_PAYMENT_LINK to a Stripe Payment Link URL you created in the dashboard
+// e.g. "https://buy.stripe.com/xxxx"
+const STRIPE_PK = "";   // leave empty to disable Stripe
+const STRIPE_LINK = ""; // your Stripe Payment Link base URL
 const ADMIN_PIN = "1234";
 const EMP_PIN = "5678";
 /* LS helper kept for non-critical data (user prefs) */
@@ -177,10 +182,26 @@ const PCard = ({p,i,sm,q,anim,onAdd,onDec,onInc,onQv,lang,t,S}) => (
     </div>
     <div style={{padding:sm?"8px 10px 10px":"10px 14px 14px"}}>
       <div className="pname" style={{fontSize:sm?13:14.5,marginBottom:2,fontWeight:600,color:"#2C2416"}}>{p.n[lang]}</div>
-      <div style={{fontSize:11.5,opacity:0.55,marginBottom:7,color:"#8B7355"}}>{p.o?.[lang]||""}</div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <span style={{fontFamily:"'Playfair Display',serif",fontSize:sm?15:17,color:"#8B7355"}}>₪{p.price}</span>
-        <span style={{fontSize:10.5,opacity:0.55}}>{UNIT_LABELS[lang]?.[p.u]||t.product[p.u]||""}</span>
+      <div style={{fontSize:11.5,opacity:0.55,marginBottom:6,color:"#8B7355"}}>{p.o?.[lang]||""}</div>
+      {/* Price display — show all enabled units or just the primary */}
+      <div style={{marginBottom:10}}>
+        {p.enabledUnits && Object.keys(p.enabledUnits).filter(k=>p.enabledUnits[k]).length>1 ? (
+          // Multi-unit: show each price on its own line
+          <div style={{display:"flex",flexDirection:"column",gap:2}}>
+            {UNIT_KEYS.filter(k=>p.enabledUnits?.[k]).map(k=>(
+              <div key={k} style={{display:"flex",alignItems:"baseline",gap:3}}>
+                <span style={{fontFamily:"'Playfair Display',serif",fontSize:sm?14:16,color:"#8B7355"}}>₪{fmtPrice(p.unitPrices?.[k]||p.price)}</span>
+                <span style={{fontSize:10,opacity:0.5}}>{UNIT_LABELS[lang]?.[k]||""}</span>
+              </div>
+            ))}
+          </div>
+        ):(
+          // Single unit: price + unit inline
+          <div style={{display:"flex",alignItems:"baseline",gap:3}}>
+            <span style={{fontFamily:"'Playfair Display',serif",fontSize:sm?15:17,color:"#8B7355"}}>₪{fmtPrice(p.price)}</span>
+            <span style={{fontSize:10.5,opacity:0.5}}>{UNIT_LABELS[lang]?.[p.u]||t.product[p.u]||""}</span>
+          </div>
+        )}
       </div>
       <QtyBtn q={q} onAdd={onAdd} onDec={onDec} onInc={onInc} anim={anim} addL={t.product.add} addedL={t.product.added} sm={sm} oos={(p.stock<=0)} oosL={t.product.oos}/>
     </div>
@@ -396,7 +417,7 @@ export default function GOA() {
   const [maxPrice,setMaxPrice] = useState(MAX_P);
   const [delDate,setDelDate] = useState(null);
   const [timeSlot,setTimeSlot] = useState("");
-  const [payMethod,setPayMethod] = useState("card");
+  const [payMethod,setPayMethod] = useState("stripe");
   const [deliveryMethod,setDeliveryMethod] = useState("deliver"); // "deliver" or "pickup"
   const [notes,setNotes] = useState({});
   const [addedAnim,setAddedAnim] = useState({});
@@ -557,7 +578,9 @@ export default function GOA() {
     const dateStr = delDate ? fmtD(delDate,lang) : "";
     const slotStr = timeSlot ? t.cart[timeSlot] : "";
     const itemsStr = cart.map(i=>`• ${i.n[lang]} ×${i.qty} — ₪${i.price*i.qty}`).join("\n");
-    const payStr = payMethod==="card" ? t.cart.card : t.cart.cash;
+    const payStr = payMethod==="stripe"
+      ? (lang==="en"?"Credit Card (Stripe)":"כרטיס אשראי (Stripe)")
+      : t.cart.cash;
     const methodStr = deliveryMethod==="pickup" ? (lang==="en"?"Self Pickup":"איסוף עצמי") : (lang==="en"?"Home Delivery":"משלוח עד הבית");
     const msg = [
       `🛒 *${lang==="en"?"New Order":"הזמנה חדשה"}*`,
@@ -585,6 +608,19 @@ export default function GOA() {
     // Use wa.me for universal WhatsApp (works on desktop and mobile)
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
 
+    // Stripe redirect — if card payment and Stripe link configured
+    if(payMethod==="stripe" && STRIPE_LINK){
+      // Build Stripe prefilled params
+      const stripeParams = new URLSearchParams({
+        prefilled_email: cEmail||"",
+        client_reference_id: `order_${Date.now()}`,
+      });
+      // Small delay so WhatsApp opens first
+      setTimeout(()=>{
+        window.location.href = `${STRIPE_LINK}?${stripeParams.toString()}`;
+      },600);
+    }
+
     // Save order to Firestore
     const orderObj={id:Date.now(),createdAt:Date.now(),date:new Date().toISOString(),items:cart.map(i=>({id:i.id,n:i.n,qty:i.qty,price:i.price,u:i.u,img:i.img})),total:tot,deliveryFee:delFee,deliveryMethod,customerName:cName,customerPhone:cPhone,status:"pending",uid:fbUser?.uid||null,userEmail:user?.email||null};
     addDoc(ORDERS_COL,orderObj).catch(console.error);
@@ -595,9 +631,9 @@ export default function GOA() {
       if(p&&p._docId){updateDoc(prodDoc(p._docId),{stock:increment(-ci.qty)}).catch(console.error);}
     }
 
-    const info = { date:delDate, slot:timeSlot, total:tot, name:cName, method:deliveryMethod };
+    const info = { date:delDate, slot:timeSlot, total:tot, name:cName, method:deliveryMethod, payMethod };
     setOrderInfo(info);
-    setCart([]);setStep(0);setCartOpen(false);setNotes({});setCName("");setCPhone("");setCEmail("");setCAddr("");setCNote("");setDelDate(null);setTimeSlot("");setPhoneTouched(false);setDeliveryMethod("deliver");setAddrCity("");setEmailTouched(false);
+    setCart([]);setStep(0);setCartOpen(false);setNotes({});setCName("");setCPhone("");setCEmail("");setCAddr("");setCNote("");setDelDate(null);setTimeSlot("");setPhoneTouched(false);setDeliveryMethod("deliver");setAddrCity("");setEmailTouched(false);setPayMethod("stripe");
   };
 
   const phoneValid = /^05\d{8}$/.test(cPhone.replace(/[\s\-()]/g,""));
@@ -635,12 +671,70 @@ export default function GOA() {
 
   /* Admin helpers — Firestore */
   const adminLogin=()=>{if(adminPin===ADMIN_PIN)setAdminAuth(true);else setAdminPin("");};
-  const openEditModal=p=>{setProdModal({mode:"edit",form:{...p,priceStr:String(p.price),stockStr:String(p.stock??50)}});};
-  const openAddModal=()=>{const mx=products.reduce((m,p)=>Math.max(m,p.id),0);setProdModal({mode:"add",form:{id:mx+1,n:{en:"",he:""},priceStr:"",stockStr:"50",u:"perKg",cat:categories[0]?.id||"fruits",img:"🍏",organic:false,seasonal:false,pop:false,o:{en:"",he:""},stock:50}});};
-  const saveProdModal=async()=>{if(!prodModal)return;const f=prodModal.form;const pr=parseFloat(f.priceStr);const stk=parseInt(f.stockStr)||0;if(!f.n.en.trim()||!f.n.he.trim()||isNaN(pr)||pr<=0)return;
-    const data={id:f.id,n:f.n,price:pr,stock:stk,u:f.u,cat:f.cat,img:f.img||"🍏",organic:!!f.organic,seasonal:!!f.seasonal,pop:!!f.pop,o:f.o||{en:"",he:""}};
-    try{if(prodModal.mode==="add"){await addDoc(PRODUCTS_COL,data);}else if(f._docId){await updateDoc(prodDoc(f._docId),data);}}catch(e){console.error("Save product error:",e);}
-    setProdModal(null);};
+  const openEditModal=p=>{
+    // Rebuild enabledUnits + prices from saved data
+    const enabledUnits = p.enabledUnits
+      ? {...p.enabledUnits}
+      : {[p.u||"perKg"]:true};
+    const prices = p.unitPrices
+      ? {...p.unitPrices}
+      : {[p.u||"perKg"]:p.price};
+    // priceStr = price of the primary/first active unit
+    const firstActive = UNIT_KEYS.find(k=>enabledUnits[k]) || p.u || "perKg";
+    const priceStr = String(prices[firstActive]||p.price||"");
+    setProdModal({mode:"edit",form:{...p,priceStr,stockStr:String(p.stock??50),enabledUnits,prices}});
+  };
+  const openAddModal=()=>{
+    const mx=products.reduce((m,p)=>Math.max(m,p.id),0);
+    setProdModal({mode:"add",form:{
+      id:mx+1,n:{en:"",he:""},priceStr:"",stockStr:"50",
+      u:"perKg",enabledUnits:{perKg:true},prices:{perKg:""},
+      cat:categories[0]?.id||"fruits",img:"🍏",
+      organic:false,seasonal:false,pop:false,o:{en:"",he:""},stock:50
+    }});
+  };
+  const saveProdModal=async()=>{
+    if(!prodModal)return;
+    const f=prodModal.form;
+    const stk=parseInt(f.stockStr)||0;
+    if(!f.n.en.trim()||!f.n.he.trim())return;
+
+    // Build prices object from enabledUnits + prices fields
+    const enabledUnits = f.enabledUnits || {[f.u||"perKg"]:true};
+    const prices = f.prices || {};
+    const activeUnits = UNIT_KEYS.filter(k=>enabledUnits[k]);
+    if(activeUnits.length===0)return;
+
+    // For each active unit, get its price (fallback to priceStr for legacy)
+    const unitPrices={};
+    let primaryPrice=null;
+    for(const uk of activeUnits){
+      const p=parseFloat(prices[uk]||f.priceStr||0);
+      if(isNaN(p)||p<=0)return; // all active units must have a valid price
+      unitPrices[uk]=p;
+      if(!primaryPrice)primaryPrice=p;
+    }
+
+    // primary unit = first active one (for backwards compat display)
+    const primaryUnit=activeUnits[0];
+
+    const data={
+      id:f.id,n:f.n,
+      price:primaryPrice,        // main price (legacy compat)
+      u:primaryUnit,             // main unit (legacy compat)
+      unitPrices,                // all prices per unit type
+      enabledUnits,              // which unit types are on
+      stock:stk,cat:f.cat,
+      img:f.img||"🍏",
+      organic:!!f.organic,seasonal:!!f.seasonal,pop:!!f.pop,
+      o:f.o||{en:"",he:""}
+    };
+    try{
+      if(prodModal.mode==="add"){await addDoc(PRODUCTS_COL,data);}
+      else if(f._docId){await updateDoc(prodDoc(f._docId),data);}
+    }catch(e){console.error("Save product error:",e);}
+    setProdModal(null);
+  };
   const delProduct=async(id)=>{const p=products.find(x=>x.id===id);if(p&&p._docId){try{await deleteDoc(prodDoc(p._docId));}catch(e){console.error("Delete product error:",e);}}};
   /* Category helpers — Firestore */
   const [newCat,setNewCat]=useState({id:"",icon:"",label:{en:"",he:""}});
@@ -789,18 +883,22 @@ export default function GOA() {
                 <div key={uKey} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,padding:"8px 10px",background:enabled?"#FFF5E5":"#F5F5F5",borderRadius:8,border:`1px solid ${enabled?"#C4A97D":"#E5DDD0"}`}}>
                   <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",minWidth:90}}>
                     <input type="checkbox" checked={!!enabled} onChange={e=>{
-                      const eu={...(prodModal.form.enabledUnits||{}),[uKey]:e.target.checked};
-                      // if only one enabled, also set main u
-                      const active=Object.entries(eu).filter(([,v])=>v).map(([k])=>k);
-                      setProdModal({...prodModal,form:{...prodModal.form,enabledUnits:eu,u:active.length===1?active[0]:(prodModal.form.u||uKey)}});
+                      const eu={...(prodModal.form.enabledUnits||{[prodModal.form.u||"perKg"]:true}),[uKey]:e.target.checked};
+                      const active=UNIT_KEYS.filter(k=>eu[k]);
+                      setProdModal({...prodModal,form:{...prodModal.form,enabledUnits:eu,u:active.length===1?active[0]:prodModal.form.u}});
                     }}/>
                     <span style={{fontSize:12.5,fontWeight:500}}>{uLabel}</span>
                   </label>
                   {enabled&&<div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
                     <span style={{fontSize:12,opacity:0.5}}>₪</span>
                     <input className="fi" type="number" min="0" step="0.5" placeholder="0.00"
-                      value={prices[uKey]||prodModal.form.priceStr||""}
-                      onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,prices:{...prices,[uKey]:e.target.value},priceStr:Object.keys(prodModal.form.enabledUnits||{}).filter(k=>(prodModal.form.enabledUnits||{})[k]).length<=1?e.target.value:prodModal.form.priceStr}})}
+                      value={prices[uKey]??""} 
+                      onChange={e=>{
+                        const newPrices={...prices,[uKey]:e.target.value};
+                        // keep priceStr in sync with first active unit's price
+                        const firstActive=UNIT_KEYS.find(k=>(prodModal.form.enabledUnits||{})[k]);
+                        setProdModal({...prodModal,form:{...prodModal.form,prices:newPrices,priceStr:firstActive===uKey?e.target.value:prodModal.form.priceStr}});
+                      }}
                       style={{direction:"ltr",padding:"6px 10px",fontSize:13}}/>
                   </div>}
                 </div>
@@ -838,7 +936,14 @@ export default function GOA() {
             <div style={{fontSize:20,fontFamily:"'Playfair Display',serif",marginBottom:8}}>{t.orderDone.title}</div>
             <div style={{color:"#8B7355",fontSize:13.5,marginBottom:12}}>{t.orderDone.msg}</div>
             <div style={{background:"#FFF5E5",border:"1px solid #E5D4B3",borderRadius:10,padding:14,marginBottom:16,fontSize:12.5,color:"#7A5C1E",textAlign:S}}>
-              💳 {lang==="en"?"Our team will contact you shortly to confirm and process your payment.":"הצוות שלנו יצור איתך קשר בקרוב לאישור ועיבוד התשלום."}
+              {orderInfo.payMethod==="stripe"
+                ? (lang==="en"
+                    ?"💳 You're being redirected to secure payment. If not redirected, contact us on WhatsApp."
+                    :"💳 הנך מועבר לדף התשלום המאובטח. אם לא הועברת, צור קשר בוואטסאפ.")
+                : (lang==="en"
+                    ?"💵 Pay in cash upon delivery. Our team will confirm your order shortly."
+                    :"💵 תשלום במזומן עם המשלוח. הצוות שלנו יאשר את ההזמנה בקרוב.")
+              }
             </div>
             <div style={{background:"#FAF7F0",borderRadius:10,padding:16,marginBottom:20,fontSize:13,textAlign:S}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{opacity:0.5}}>{t.orderDone.delivery}</span><span>{orderInfo.date?fmtD(orderInfo.date,lang):""}</span></div>
@@ -866,10 +971,21 @@ export default function GOA() {
             <div style={{padding:"20px 24px 24px"}}>
               <div style={{fontSize:18,fontFamily:"'Playfair Display',serif",marginBottom:3}}>{qv.n[lang]}</div>
               <div style={{fontSize:13,opacity:0.65,marginBottom:14,color:'#8B7355'}}>📍 {qv.o[lang]}</div>
-              <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:16}}>
-                <span style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#8B7355"}}>₪{qv.price}</span>
-                <span style={{fontSize:11.5,opacity:0.4}}>{t.product[qv.u]}</span>
-                {cQty(qv.id)>1&&<span style={{fontSize:12,opacity:0.45,marginInlineStart:"auto"}}>= ₪{qv.price*cQty(qv.id)}</span>}
+              <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+                {qv.enabledUnits && Object.keys(qv.enabledUnits).filter(k=>qv.enabledUnits[k]).length>1 ? (
+                  UNIT_KEYS.filter(k=>qv.enabledUnits?.[k]).map(k=>(
+                    <div key={k} style={{display:"flex",alignItems:"baseline",gap:3,marginInlineEnd:10}}>
+                      <span style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#8B7355"}}>₪{fmtPrice(qv.unitPrices?.[k]||qv.price)}</span>
+                      <span style={{fontSize:11,opacity:0.4}}>{UNIT_LABELS[lang]?.[k]||""}</span>
+                    </div>
+                  ))
+                ):(
+                  <>
+                    <span style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#8B7355"}}>₪{fmtPrice(qv.price)}</span>
+                    <span style={{fontSize:11.5,opacity:0.4}}>{UNIT_LABELS[lang]?.[qv.u]||t.product[qv.u]||""}</span>
+                  </>
+                )}
+                {cQty(qv.id)>1&&<span style={{fontSize:12,opacity:0.45,marginInlineStart:"auto"}}>= ₪{fmtPrice(qv.price*cQty(qv.id))}</span>}
               </div>
               <textarea placeholder={t.product.notes} value={notes[qv.id]||""} onChange={e=>setNotes({...notes,[qv.id]:e.target.value})} rows={2}
                 style={{width:"100%",padding:"9px 12px",border:"1px solid #F0EBE3",borderRadius:9,fontSize:12.5,fontFamily:"inherit",outline:"none",resize:"none",background:"#FAF7F0",marginBottom:14}}/>
@@ -991,11 +1107,40 @@ export default function GOA() {
               {/* Payment */}
               <div style={{marginBottom:22}}>
                 <div className="sl">{t.cart.payMethod}</div>
-                <div style={{display:"flex",gap:8}}>
-                  <button className={`pb ${payMethod==="card"?"on":""}`} onClick={()=>setPayMethod("card")}>💳 {t.cart.card}</button>
-                  <button className={`pb ${payMethod==="cash"?"on":""}`} onClick={()=>setPayMethod("cash")}>💵 {t.cart.cash}</button>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <button className={`pb ${payMethod==="stripe"?"on":""}`} onClick={()=>setPayMethod("stripe")}>
+                    💳 {lang==="en"?"Credit Card":"כרטיס אשראי"}
+                  </button>
+                  <button className={`pb ${payMethod==="cash"?"on":""}`} onClick={()=>setPayMethod("cash")}>
+                    💵 {t.cart.cash}
+                  </button>
                 </div>
-                <div style={{marginTop:8,fontSize:11,opacity:0.45,lineHeight:1.5}}>{lang==="en"?"Payment is processed after order confirmation. Our team will be in touch.":"התשלום מעובד לאחר אישור ההזמנה. הצוות שלנו יצור איתך קשר."}</div>
+                {payMethod==="stripe"&&(
+                  <div style={{marginTop:12,background:"#F8F6FF",border:"1px solid #D4C5F9",borderRadius:10,padding:14}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                      <span style={{fontSize:18}}>🔒</span>
+                      <span style={{fontSize:12,fontWeight:600,color:"#5B4FCF"}}>{lang==="en"?"Secure payment via Stripe":"תשלום מאובטח דרך Stripe"}</span>
+                    </div>
+                    <div style={{fontSize:11,opacity:0.6,lineHeight:1.6}}>
+                      {lang==="en"
+                        ?"After placing your order you'll be redirected to Stripe's secure payment page. Supports Visa, Mastercard, American Express."
+                        :"לאחר הגשת ההזמנה תועבר לדף התשלום המאובטח של Stripe. תומך בכל סוגי כרטיסי האשראי."}
+                    </div>
+                    <div style={{display:"flex",gap:4,marginTop:8}}>
+                      {["visa","mc","amex"].map(c=>(
+                        <div key={c} style={{background:"#fff",border:"1px solid #E5DDD0",borderRadius:4,padding:"3px 7px",fontSize:10,fontWeight:700,color:"#444",letterSpacing:0.5}}>
+                          {c==="visa"?"VISA":c==="mc"?"MC":"AMEX"}
+                        </div>
+                      ))}
+                      <div style={{background:"#635BFF",borderRadius:4,padding:"3px 7px",fontSize:10,fontWeight:700,color:"#fff",letterSpacing:0.5}}>stripe</div>
+                    </div>
+                  </div>
+                )}
+                {payMethod==="cash"&&(
+                  <div style={{marginTop:8,fontSize:11,opacity:0.45,lineHeight:1.5}}>
+                    {lang==="en"?"Pay in cash when you receive your order.":"תשלום במזומן עם קבלת ההזמנה."}
+                  </div>
+                )}
               </div>
               {/* Order note */}
               <div style={{marginBottom:22}}>

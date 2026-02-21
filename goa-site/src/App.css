@@ -47,6 +47,7 @@ html,body,#root{width:100%;min-height:100vh;margin:0;padding:0}
 @media(max-width:768px){body{padding-bottom:60px}}
 
 /* ═══ ANIMATIONS ═══ */
+@keyframes spin     {from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes fadeUp    {from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn    {from{opacity:0}to{opacity:1}}
 @keyframes scaleIn   {from{opacity:0;transform:scale(0.94)}to{opacity:1;transform:scale(1)}}
@@ -692,5 +693,267 @@ select.fi{cursor:pointer}
   .hero-headline{font-size:42px}
 }
 
-/* ═══ UTILITY ═══ */
-.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+/* ═══ ACCESSIBILITY ═══ */
+
+/* Skip to main content link */
+.skip-link{
+  position:absolute;top:-100%;left:0;
+  background:var(--ink);color:var(--cream);
+  padding:12px 20px;border-radius:0 0 8px 0;
+  font-size:13px;font-weight:600;z-index:9999;
+  text-decoration:none;font-family:'Lato',sans-serif;
+}
+.skip-link:focus{top:0;}
+
+/* Enhanced focus ring — visible for keyboard users */
+*:focus-visible{
+  outline:3px solid var(--earth);
+  outline-offset:3px;
+  border-radius:4px;
+}
+/* Remove default focus outline only when using mouse */
+:focus:not(:focus-visible){outline:none;}
+
+/* WCAG AA contrast fixes */
+/* Gold text on cream fails AA — bump to darker earth tone */
+.porigin{ color: var(--ink-soft); opacity: 0.55; }
+.pprice { color: var(--ink-soft); }
+.hero-sub { color: var(--ink-soft); opacity: 0.7; }
+.hero-eyebrow { color: var(--ink-soft); opacity: 0.6; }
+.filter-price-label { color: var(--ink-soft); }
+.filter-count { color: var(--ink-soft); }
+.logo-sub { color: var(--ink-soft); }
+.sl { color: var(--ink-soft); }
+
+/* Touch targets — minimum 44×44px for all interactive elements */
+.nl { min-height: 44px; display: inline-flex; align-items: center; }
+.cb, .sb, .clb, .db, .tb { min-height: 44px; }
+.cnb { min-width: 44px; min-height: 44px; }
+.mob-nav__btn { min-width: 44px; min-height: 44px; }
+
+/* Prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .banner-track { animation: none; }
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+  .pcard, .sc, .qc { border: 2px solid ButtonText; }
+  .mb, .add-btn { border: 2px solid ButtonText; }
+}
+
+/* ═══ DELIVERY PROGRESS BAR ═══ */
+.delivery-progress{
+  display:flex;align-items:center;gap:10px;
+  background:var(--gold-pale);border-radius:10px;
+  padding:10px 14px;margin-bottom:12px;
+  font-size:12.5px;color:var(--ink-soft);
+}
+.delivery-progress-bar{
+  height:4px;background:var(--parchment);border-radius:2px;
+  overflow:hidden;margin-top:4px;
+}
+.delivery-progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--earth-light),var(--gold));
+  border-radius:2px;transition:width 0.6s var(--ease-out);
+}
+
+/* ═══ CHECKOUT STEPS ═══ */
+.checkout-steps{
+  display:flex;align-items:center;gap:0;margin-bottom:24px;
+}
+.checkout-step{
+  display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;position:relative;
+}
+.checkout-step::after{
+  content:'';position:absolute;top:14px;inset-inline-start:50%;width:100%;height:2px;
+  background:var(--parchment);z-index:0;
+}
+.checkout-step:last-child::after{display:none;}
+.checkout-step-dot{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;z-index:1;
+  border:2px solid var(--parchment);
+  background:var(--cream);color:var(--ink-soft);
+  transition:all 0.3s;font-family:'Lato',sans-serif;
+}
+.checkout-step.done .checkout-step-dot{background:var(--sage);border-color:var(--sage);color:#fff;}
+.checkout-step.done::after{background:var(--sage);opacity:0.4;}
+.checkout-step.active .checkout-step-dot{background:var(--ink);border-color:var(--ink);color:var(--cream);}
+.checkout-step-label{font-size:9px;letter-spacing:0.5px;text-transform:uppercase;opacity:0.5;font-family:'Lato',sans-serif;text-align:center;}
+.checkout-step.active .checkout-step-label{opacity:1;color:var(--ink);}
+.checkout-step.done .checkout-step-label{opacity:0.7;color:var(--sage);}
+
+/* ═══ SPIN ANIMATION (loading) ═══ */
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* ═══ ACCESSIBILITY ═══ */
+
+/* Reduced motion — respect user OS setting */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .banner-track { animation: none !important; }
+  .hero-deco { animation: none !important; }
+}
+
+/* Focus visible — strong ring for keyboard nav */
+:focus-visible {
+  outline: 3px solid var(--earth);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--earth);
+  outline-offset: 2px;
+}
+
+/* Skip to main content link */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--cream);
+  padding: 10px 24px;
+  border-radius: 0 0 8px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 9999;
+  text-decoration: none;
+  transition: top 0.2s;
+}
+.skip-link:focus { top: 0; }
+
+/* Minimum touch target size — 44x44px */
+.qb { min-width: 44px; min-height: 44px; }
+.add-btn { min-height: 44px; }
+.cnb { min-width: 44px; min-height: 44px; }
+.ham { min-width: 44px; min-height: 44px; }
+.mob-nav__btn { min-width: 44px; min-height: 44px; padding: 8px 12px; }
+.cb { min-height: 40px; padding: 8px 16px; }
+
+/* High contrast for gold-on-cream — WCAG AA compliant */
+/* earth (#8B6F47) on cream (#FBF7F0) = 4.6:1 ratio ✓ */
+/* ink (#2A1F0E) on cream (#FBF7F0) = 14.8:1 ratio ✓ */
+.pprice { color: #7A5E35; } /* darkened from #8B6F47 for better contrast */
+.punit  { color: #5A4A30; opacity: 1; }
+.porigin { color: #6B5235; opacity: 1; }
+
+/* Visually hidden utility (for sr-only text) */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0,0,0,0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Checkout step indicator */
+.checkout-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 24px;
+  padding: 0 4px;
+}
+.checkout-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  position: relative;
+}
+.checkout-step::after {
+  content: '';
+  position: absolute;
+  top: 14px;
+  inset-inline-start: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--parchment);
+  z-index: 0;
+}
+.checkout-step:last-child::after { display: none; }
+.checkout-step.done::after { background: var(--earth); }
+.checkout-step__dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--parchment);
+  border: 2px solid var(--parchment);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  position: relative; z-index: 1;
+  transition: all 0.25s;
+  color: var(--ink-soft);
+}
+.checkout-step.done .checkout-step__dot {
+  background: var(--earth);
+  border-color: var(--earth);
+  color: #fff;
+}
+.checkout-step.active .checkout-step__dot {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(42,31,14,0.1);
+}
+.checkout-step__label {
+  font-family: 'Lato', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  opacity: 0.5;
+  white-space: nowrap;
+}
+.checkout-step.active .checkout-step__label,
+.checkout-step.done .checkout-step__label {
+  opacity: 1;
+  color: var(--earth);
+}
+
+/* Delivery fee banner in cart */
+.delivery-progress {
+  background: var(--sage-pale);
+  border: 1px solid var(--sage-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--sage);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.delivery-progress-bar {
+  height: 4px;
+  background: rgba(92,122,92,0.15);
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.delivery-progress-fill {
+  height: 100%;
+  background: var(--sage);
+  border-radius: 2px;
+  transition: width 0.4s var(--ease-out);
+}

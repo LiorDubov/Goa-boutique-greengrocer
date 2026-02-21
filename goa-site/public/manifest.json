@@ -1,0 +1,52 @@
+{
+  "name": "GOA Boutique Greengrocer",
+  "short_name": "GOA Boutique",
+  "description": "Fresh, seasonal, and organic produce delivered to your door in Tel Aviv. Boutique greengrocer at King George 31.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FBF7F0",
+  "theme_color": "#2A1F0E",
+  "orientation": "portrait-primary",
+  "lang": "he",
+  "dir": "rtl",
+  "categories": ["food", "shopping"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/home.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "GOA Boutique Home"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Shop Now",
+      "short_name": "Shop",
+      "description": "Browse fresh produce",
+      "url": "/#shop",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Weekly Baskets",
+      "short_name": "Baskets",
+      "description": "Subscribe to weekly baskets",
+      "url": "/#subscriptions",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

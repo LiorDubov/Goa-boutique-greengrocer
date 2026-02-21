@@ -1,13 +1,170 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>goa-site</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- ═══ PRIMARY SEO ═══ -->
+  <title>גואה בוטיק | ירקניית בוטיק טרייה בתל אביב — GOA Boutique Greengrocer</title>
+  <meta name="description" content="ירקניית בוטיק GOA — פירות וירקות טריים, אורגניים ועונתיים. משלוח לביתכם בתל אביב ומרכז. קינג ג'ורג' 31, תל אביב. הזמינו עכשיו." />
+  <meta name="keywords" content="ירקניית בוטיק, פירות וירקות טריים, אורגני, תל אביב, GOA boutique, משלוח ירקות, קינג ג'ורג', ירקות עונתיים, סל שבועי" />
+  <meta name="author" content="GOA Boutique Greengrocer" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://goa-boutique.vercel.app/" />
+
+  <!-- ═══ OPEN GRAPH ═══ -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="GOA Boutique Greengrocer" />
+  <meta property="og:title" content="GOA Boutique — ירקניית בוטיק טרייה בתל אביב" />
+  <meta property="og:description" content="פירות וירקות טריים, אורגניים ועונתיים. משלוח לביתכם בתל אביב. קינג ג'ורג' 31." />
+  <meta property="og:url" content="https://goa-boutique.vercel.app/" />
+  <meta property="og:image" content="https://goa-boutique.vercel.app/og-image.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="GOA Boutique — fresh produce display" />
+  <meta property="og:locale" content="he_IL" />
+  <meta property="og:locale:alternate" content="en_US" />
+
+  <!-- ═══ TWITTER CARD ═══ -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="GOA Boutique — ירקניית בוטיק בתל אביב" />
+  <meta name="twitter:description" content="פירות וירקות טריים ואורגניים. משלוח יומי לתל אביב." />
+  <meta name="twitter:image" content="https://goa-boutique.vercel.app/og-image.jpg" />
+
+  <!-- ═══ PWA ═══ -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#2A1F0E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GOA Boutique" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <!-- ═══ FAVICON ═══ -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+
+  <!-- ═══ FONTS — preconnect for performance ═══ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Noto+Sans+Hebrew:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap"
+    onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript>
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Noto+Sans+Hebrew:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap" />
+  </noscript>
+
+  <!-- ═══ JSON-LD STRUCTURED DATA ═══ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "LocalBusiness",
+        "@id": "https://goa-boutique.vercel.app/#business",
+        "name": "GOA Boutique Greengrocer",
+        "alternateName": "גואה ירקניית בוטיק",
+        "description": "Boutique greengrocer offering fresh, seasonal, and organic fruits and vegetables with same-day delivery in Tel Aviv.",
+        "url": "https://goa-boutique.vercel.app/",
+        "telephone": "+972-50-444-5272",
+        "email": "hello@goaboutique.co.il",
+        "image": "https://goa-boutique.vercel.app/og-image.jpg",
+        "logo": "https://goa-boutique.vercel.app/icons/icon-512.png",
+        "priceRange": "₪₪",
+        "currenciesAccepted": "ILS",
+        "paymentAccepted": "Cash, Credit Card",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "King George 31",
+          "addressLocality": "Tel Aviv",
+          "addressRegion": "Tel Aviv District",
+          "postalCode": "6433215",
+          "addressCountry": "IL"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 32.0703,
+          "longitude": 34.7748
+        },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"],
+            "opens": "07:00",
+            "closes": "20:00"
+          },
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": "Sunday",
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "Fresh Produce",
+          "itemListElement": [
+            { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Seasonal Fruits" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Organic Vegetables" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Weekly Baskets" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Herbs & Spices" } }
+          ]
+        },
+        "sameAs": [
+          "https://www.instagram.com/goaboutique",
+          "https://wa.me/972504445272"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://goa-boutique.vercel.app/#website",
+        "url": "https://goa-boutique.vercel.app/",
+        "name": "GOA Boutique Greengrocer",
+        "inLanguage": ["he", "en"],
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://goa-boutique.vercel.app/#shop?search={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- ═══ INLINE CRITICAL CSS — prevents flash of unstyled content ═══ -->
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body,#root{width:100%;min-height:100vh;background:#FBF7F0;color:#2A1F0E}
+    body{font-family:'Noto Sans Hebrew','Cormorant Garamond',Georgia,serif}
+    /* Prevent layout shift while fonts load */
+    #root:empty::before{
+      content:'';display:block;height:100vh;
+      background:linear-gradient(180deg,#FBF7F0 0%,#F2EAD8 100%);
+    }
+    /* Reduce motion */
+    @media(prefers-reduced-motion:reduce){
+      *,*::before,*::after{
+        animation-duration:0.01ms!important;
+        animation-iteration-count:1!important;
+        transition-duration:0.01ms!important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Register Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('SW registered:', reg.scope))
+          .catch(err => console.log('SW failed:', err));
+      });
+    }
+  </script>
+
+  <script type="module" src="/src/main.jsx"></script>
+</body>
 </html>

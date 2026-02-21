@@ -1,8 +1,16 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Suspense, lazy } from "react";
 import "./goa.css";
+// Firebase — only import what's used (tree-shaken)
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, increment, serverTimestamp } from "firebase/firestore";
-import { getAuth, signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  getFirestore, collection, doc,
+  onSnapshot, addDoc, updateDoc, deleteDoc,
+  increment, serverTimestamp
+} from "firebase/firestore";
+import {
+  getAuth, signInAnonymously, onAuthStateChanged,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
+} from "firebase/auth";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 /* ═══ FIREBASE INIT ═══ */
@@ -158,35 +166,52 @@ const Inp = ({ val, set, ph, type="text", req, error, onBlur }) => (
       ...(error?{borderColor:"#D94F4F",boxShadow:"0 0 0 3px rgba(217,79,79,0.08)"}:{})}}/>
 );
 
-const QtyBtn = ({q,onAdd,onDec,onInc,anim,addL,addedL,sm,oos,oosL,lowStock}) => {
-  if(oos) return <div style={{textAlign:"center",fontSize:11,color:"#D94F4F",opacity:0.7,padding:"8px 0"}}>{oosL}</div>;
-  const lowBadge=lowStock?<div style={{textAlign:"center",fontSize:9,color:"#B8860B",marginTop:3}}>{lowStock} left</div>:null;
-  if(!q) return <div>{lowBadge}<button className="add-btn" style={sm?{padding:"8px 14px",fontSize:12}:{}} onClick={e=>{e.preventDefault();e.stopPropagation();onAdd();}}>{anim?addedL:addL}</button></div>;
-  return <div style={{display:"flex",alignItems:"center",gap:sm?8:10,justifyContent:"center"}} onClick={e=>{e.preventDefault();e.stopPropagation();}}>
-    <button className="qb" onClick={e=>{e.preventDefault();e.stopPropagation();onDec();}}>−</button>
-    <span style={{fontWeight:600,minWidth:22,textAlign:"center",fontSize:sm?14:16}}>{q}</span>
-    <button className="qb" onClick={e=>{e.preventDefault();e.stopPropagation();onInc();}}>+</button>
+/* ═══ PAGE LOADING SPINNER ═══ */
+const PageSpinner = () => (
+  <div role="status" aria-label="Loading" style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"40vh",opacity:0.4}}>
+    <div style={{width:32,height:32,border:"2.5px solid var(--parchment)",borderTopColor:"var(--earth)",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>
+  </div>
+);
+
+const QtyBtn = ({q,onAdd,onDec,onInc,anim,addL,addedL,sm,oos,oosL,lowStock,productName=""}) => {
+  if(oos) return <div style={{textAlign:"center",fontSize:11,color:"#D94F4F",opacity:0.7,padding:"8px 0"}} role="status" aria-label={oosL}>{oosL}</div>;
+  const lowBadge=lowStock?<div style={{textAlign:"center",fontSize:9,color:"#B8860B",marginTop:3}} role="status" aria-live="polite">{lowStock} left</div>:null;
+  if(!q) return <div>{lowBadge}<button className={`add-btn${anim?" added":""}`} style={sm?{padding:"8px 14px",fontSize:12}:{}} onClick={e=>{e.preventDefault();e.stopPropagation();onAdd();}} aria-label={`${addL}${productName?" — "+productName:""}`}>{anim?addedL:addL}</button></div>;
+  return <div style={{display:"flex",alignItems:"center",gap:sm?8:10,justifyContent:"center"}} role="group" aria-label={`Quantity for ${productName}`} onClick={e=>{e.preventDefault();e.stopPropagation();}}>
+    <button className="qb" onClick={e=>{e.preventDefault();e.stopPropagation();onDec();}} aria-label={`Remove one ${productName}`} style={{minWidth:44,minHeight:44}}>−</button>
+    <span style={{fontWeight:600,minWidth:22,textAlign:"center",fontSize:sm?14:16}} aria-live="polite" aria-atomic="true" aria-label={`${q} in cart`}>{q}</span>
+    <button className="qb" onClick={e=>{e.preventDefault();e.stopPropagation();onInc();}} aria-label={`Add one more ${productName}`} style={{minWidth:44,minHeight:44}}>+</button>
   </div>;
 };
 
-const PCard = ({p,i,sm,q,anim,onAdd,onDec,onInc,onQv,lang,t,S}) => (
-  <div className="pcard" style={{animation:`fadeUp 0.4s ${i*0.05}s both`,opacity:(p.stock<=0)?0.5:1}} onClick={()=>onQv(p)}>
-    {q>0&&<div className="cbadge">{q}</div>}
+const PCard = ({p,i,sm,q,anim,onAdd,onDec,onInc,onQv,lang,t,S}) => {
+  const name = p.n[lang];
+  const origin = p.o?.[lang]||"";
+  const badges = [p.organic&&t.organic,p.seasonal&&t.seasonalTag,p.pop&&t.popular].filter(Boolean).join(", ");
+  const priceLabel = `₪${fmtPrice(p.price)}${t.product[p.u]||""}`;
+  const cardLabel = `${name}${origin?" — "+origin:""}, ${priceLabel}${badges?", "+badges:""}${p.stock<=0?" — "+t.product.oos:""}`;
+  return (
+  <article className="pcard"
+    style={{animation:`fadeUp 0.4s ${i*0.05}s both`,opacity:(p.stock<=0)?0.5:1}}
+    onClick={()=>onQv(p)}
+    onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onQv(p);}}}
+    tabIndex={0} role="button" aria-label={cardLabel}>
+    {q>0&&<div className="cbadge" aria-hidden="true">{q}</div>}
     <div className="pcard__img" style={{height:sm?118:152,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
       {p.img?.startsWith("http")
-        ? <img src={p.img} alt={p.n[lang]} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-        : <span className="pcard__img" style={{fontSize:sm?50:64,height:"auto",background:"none",display:"block",padding:sm?"16px":"20px"}}>{p.img}</span>
+        ? <img src={p.img} alt={`${name}${origin?" from "+origin:""}`} loading="lazy" width="200" height={sm?118:152} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+        : <span role="img" aria-label={name} style={{fontSize:sm?50:64,display:"block",padding:sm?"16px":"20px"}}>{p.img}</span>
       }
-      <div style={{position:"absolute",top:8,display:"flex",gap:4,flexWrap:"wrap",maxWidth:"75%",[S]:8}}>
+      <div style={{position:"absolute",top:8,display:"flex",gap:4,flexWrap:"wrap",maxWidth:"75%",[S]:8}} aria-hidden="true">
         {p.organic&&<span className="tag otag">{t.organic}</span>}
         {p.seasonal&&<span className="tag stag">{t.seasonalTag}</span>}
         {p.pop&&<span className="tag ptag">{t.popular}</span>}
       </div>
     </div>
     <div className="pcard__body">
-      <div className="pname" style={{fontSize:sm?12.5:14}}>{p.n[lang]}</div>
-      <div className="porigin">{p.o?.[lang]||""}</div>
-      <div className="pprice-wrap">
+      <h3 className="pname" style={{fontSize:sm?12.5:14}}>{name}</h3>
+      {origin&&<div className="porigin">{origin}</div>}
+      <div className="pprice-wrap" aria-label={priceLabel}>
         {p.enabledUnits && Object.keys(p.enabledUnits).filter(k=>p.enabledUnits[k]).length>1 ? (
           <div style={{display:"flex",flexDirection:"column",gap:1}}>
             {UNIT_KEYS.filter(k=>p.enabledUnits?.[k]).map(k=>(
@@ -206,10 +231,12 @@ const PCard = ({p,i,sm,q,anim,onAdd,onDec,onInc,onQv,lang,t,S}) => (
       <QtyBtn q={q} onAdd={onAdd} onDec={onDec} onInc={onInc} anim={anim}
         addL={t.product.add} addedL={t.product.added} sm={sm}
         oos={(p.stock<=0)} oosL={t.product.oos}
-        lowStock={p.stock>0&&p.stock<=5?p.stock:0}/>
+        lowStock={p.stock>0&&p.stock<=5?p.stock:0}
+        productName={name}/>
     </div>
-  </div>
-);
+  </article>
+  );
+};
 
 /* ═══ EMPLOYEE VIEW (external component) ═══ */
 const EmployeeView = ({orders,setOrders,lang,onBack}) => {
@@ -411,6 +438,8 @@ export default function GOA() {
 
   const [lang,setLang] = useState("he");
   const [page,setPage] = useState("home");
+  // Track which pages have been mounted — avoids re-rendering heavy pages
+  const [mountedPages,setMountedPages] = useState(new Set(["home"]));
   const [cat,setCat] = useState("all");
   const [cart,setCart] = useState([]);
   const [cartOpen,setCartOpen] = useState(false);
@@ -552,7 +581,13 @@ export default function GOA() {
 
   const hasFilters = cat!=="all"||search||maxPrice<MAX_P||sortBy!=="default";
   const clearF=()=>{setCat("all");setSearch("");setMaxPrice(MAX_P);setSortBy("default");};
-  const go=(p,keepCat)=>{setPage(p);setMobileMenu(false);if(p==="shop"&&!keepCat)clearF();window.scrollTo?.({top:0,behavior:"smooth"});};
+  const go=(p,keepCat)=>{
+    setPage(p);
+    setMountedPages(prev=>new Set([...prev,p]));
+    setMobileMenu(false);
+    if(p==="shop"&&!keepCat)clearF();
+    window.scrollTo?.({top:0,behavior:"smooth"});
+  };
 
   const emailValid = !cEmail.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cEmail.trim());
   const emailError = emailTouched && cEmail.trim() && !emailValid;
@@ -580,55 +615,83 @@ export default function GOA() {
   const placeOrder=()=>{
     const dateStr = delDate ? fmtD(delDate,lang) : "";
     const slotStr = timeSlot ? t.cart[timeSlot] : "";
-    const itemsStr = cart.map(i=>`• ${i.n[lang]} ×${i.qty} — ₪${i.price*i.qty}`).join("\n");
+    const itemsStr = cart.map(i=>`• ${i.n[lang]} ×${i.qty} — ₪${fmtPrice(i.price*i.qty)}`).join("\n");
     const payStr = payMethod==="stripe"
       ? (lang==="en"?"Credit Card (Stripe)":"כרטיס אשראי (Stripe)")
       : t.cart.cash;
     const methodStr = deliveryMethod==="pickup" ? (lang==="en"?"Self Pickup":"איסוף עצמי") : (lang==="en"?"Home Delivery":"משלוח עד הבית");
-    const msg = [
-      `🛒 *${lang==="en"?"New Order":"הזמנה חדשה"}*`,
+
+    const msg = lang==="en" ? [
+      `🛒 *New Order — GOA Boutique*`,
       ``,
-      `👤 *${t.cart.contact}*`,
-      `${t.cart.name}: ${cName}`,
-      `${t.cart.phone}: ${cPhone}`,
-      cEmail ? `${lang==="en"?"Email":"אימייל"}: ${cEmail}` : null,
-      deliveryMethod==="deliver" ? `${t.cart.address}: ${cAddr}${addrCity?", "+addrCity:""}` : `📍 ${lang==="en"?"Pickup from store":"איסוף מהחנות"}`,
+      `👤 *Customer Details*`,
+      `Name: ${cName}`,
+      `Phone: ${cPhone}`,
+      cEmail ? `Email: ${cEmail}` : null,
+      deliveryMethod==="deliver"
+        ? `Address: ${cAddr}${addrCity?", "+addrCity:""}`
+        : `📍 Store pickup — King George 31, Tel Aviv`,
       ``,
-      `📦 *${t.cart.yourOrder}*`,
+      `📦 *Order Summary*`,
       itemsStr,
       ``,
-      `${t.cart.subtotal}: ₪${sub}`,
-      `${t.cart.delivery}: ${delFee===0?(lang==="en"?"Free":"חינם"):`₪${delFee}`}`,
-      `*${t.cart.total}: ₪${tot}*`,
+      `Subtotal: ₪${sub}`,
+      `Delivery: ${delFee===0?"Free 🎉":`₪${delFee}`}`,
+      `*TOTAL: ₪${tot}*`,
       ``,
-      `🚚 ${t.cart.deliveryMethod}: ${methodStr}`,
-      deliveryMethod==="deliver" ? `📅 ${t.cart.deliveryDate}: ${dateStr}` : null,
-      deliveryMethod==="deliver" ? `⏰ ${t.cart.timeSlot}: ${slotStr}` : null,
-      `💳 ${t.cart.payMethod}: ${payStr}`,
-      cNote ? `\n📝 ${lang==="en"?"Notes":"הערות"}: ${cNote}` : null,
+      `🚚 Method: ${methodStr}`,
+      deliveryMethod==="deliver" ? `📅 Date: ${dateStr}` : null,
+      deliveryMethod==="deliver" ? `⏰ Time: ${slotStr}` : null,
+      `💳 Payment: ${payStr}`,
+      cNote ? `\n📝 Notes: ${cNote}` : null,
+      ``,
+      `─────────────────`,
+      `✅ *What happens next?*`,
+      `We'll confirm your order within 30 minutes.`,
+      `You'll receive a WhatsApp message once your order is packed and on its way.`,
+      deliveryMethod==="pickup" ? `Please arrive at King George 31 during your selected time.` : `Our driver will contact you before delivery.`,
+    ].filter(Boolean).join("\n")
+    : [
+      `🛒 *הזמנה חדשה — GOA בוטיק*`,
+      ``,
+      `👤 *פרטי לקוח*`,
+      `שם: ${cName}`,
+      `טלפון: ${cPhone}`,
+      cEmail ? `אימייל: ${cEmail}` : null,
+      deliveryMethod==="deliver"
+        ? `כתובת: ${cAddr}${addrCity?", "+addrCity:""}`
+        : `📍 איסוף עצמי — המלך ג׳ורג׳ 31, תל אביב`,
+      ``,
+      `📦 *סיכום ההזמנה*`,
+      itemsStr,
+      ``,
+      `סכום ביניים: ₪${sub}`,
+      `משלוח: ${delFee===0?"חינם 🎉":`₪${delFee}`}`,
+      `*סה״כ לתשלום: ₪${tot}*`,
+      ``,
+      `🚚 שיטה: ${methodStr}`,
+      deliveryMethod==="deliver" ? `📅 תאריך: ${dateStr}` : null,
+      deliveryMethod==="deliver" ? `⏰ שעה: ${slotStr}` : null,
+      `💳 תשלום: ${payStr}`,
+      cNote ? `\n📝 הערות: ${cNote}` : null,
+      ``,
+      `─────────────────`,
+      `✅ *מה קורה עכשיו?*`,
+      `נאשר את הזמנתך תוך 30 דקות.`,
+      `תקבל/י הודעת WhatsApp כשההזמנה תהיה מוכנה ובדרך.`,
+      deliveryMethod==="pickup" ? `אנא הגע/י לחנות בשעה שבחרת — המלך ג׳ורג׳ 31.` : `השליח שלנו יצור קשר לפני ההגעה.`,
     ].filter(Boolean).join("\n");
 
-    // Use wa.me for universal WhatsApp (works on desktop and mobile)
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
 
-    // Stripe redirect — if card payment and Stripe link configured
     if(payMethod==="stripe" && STRIPE_LINK){
-      // Build Stripe prefilled params
-      const stripeParams = new URLSearchParams({
-        prefilled_email: cEmail||"",
-        client_reference_id: `order_${Date.now()}`,
-      });
-      // Small delay so WhatsApp opens first
-      setTimeout(()=>{
-        window.location.href = `${STRIPE_LINK}?${stripeParams.toString()}`;
-      },600);
+      const stripeParams = new URLSearchParams({prefilled_email:cEmail||"",client_reference_id:`order_${Date.now()}`});
+      setTimeout(()=>{ window.location.href = `${STRIPE_LINK}?${stripeParams.toString()}`; },600);
     }
 
-    // Save order to Firestore
     const orderObj={id:Date.now(),createdAt:Date.now(),date:new Date().toISOString(),items:cart.map(i=>({id:i.id,n:i.n,qty:i.qty,price:i.price,u:i.u,img:i.img})),total:tot,deliveryFee:delFee,deliveryMethod,customerName:cName,customerPhone:cPhone,status:"pending",uid:fbUser?.uid||null,userEmail:user?.email||null};
     addDoc(ORDERS_COL,orderObj).catch(console.error);
 
-    // Deduct stock in Firestore
     for(const ci of cart){
       const p=products.find(x=>x.id===ci.id);
       if(p&&p._docId){updateDoc(prodDoc(p._docId),{stock:increment(-ci.qty)}).catch(console.error);}
@@ -753,6 +816,11 @@ export default function GOA() {
   return (
     <div dir={dir} style={{fontFamily:rtl?"'Noto Sans Hebrew','Segoe UI',sans-serif":"'Cormorant Garamond',Georgia,serif",background:"#FDFBF7",color:"#2C2416",minHeight:"100vh",width:"100%"}}>
 
+      {/* Skip to main content — keyboard accessibility */}
+      <a href="#main-content" className="skip-link">
+        {lang==="en"?"Skip to main content":"דלג לתוכן הראשי"}
+      </a>
+
       {/* ═══ BANNER ═══ */}
       <div className="banner">
         <div className="banner-track">
@@ -770,43 +838,64 @@ export default function GOA() {
       </div>
 
       {/* ═══ NAV ═══ */}
-      <nav className="topnav">
-        <div className="logo-wrap" style={{display:"flex",flexDirection:"row",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>go("home")}>
-          <div className="logo-mark" style={{flexShrink:0}}>G</div>
+      <nav className="topnav" role="navigation" aria-label={lang==="en"?"Main navigation":"ניווט ראשי"}>
+        <button className="logo-wrap" style={{display:"flex",flexDirection:"row",alignItems:"center",gap:10,cursor:"pointer",background:"none",border:"none",padding:0}} onClick={()=>go("home")} aria-label={lang==="en"?"GOA Boutique — Home":"GOA בוטיק — דף הבית"}>
+          <div className="logo-mark" style={{flexShrink:0}} aria-hidden="true">G</div>
           <div className="logo-text" style={{display:"flex",flexDirection:"column",gap:1}}>
             <span className="logo-name">{rtl?"גואה":"GOA"}</span>
             <span className="logo-sub">{rtl?"ירקניית בוטיק":"boutique greengrocer"}</span>
           </div>
-        </div>
-        <div className="dn" style={{display:"flex",gap:22,alignItems:"center"}}>
+        </button>
+        <div className="dn" style={{display:"flex",gap:22,alignItems:"center"}} role="list">
           {["home","shop","subscriptions","loyalty","about"].map(p=>(
-            <span key={p} className={`nl ${page===p?"on":""}`} onClick={()=>go(p)} style={{fontFamily:rtl?"'Noto Sans Hebrew',sans-serif":"'Cormorant Garamond',serif"}}>{t.nav[p]}</span>
+            <button key={p} role="listitem" className={`nl ${page===p?"on":""}`} onClick={()=>go(p)}
+              aria-current={page===p?"page":undefined}
+              style={{background:"none",border:"none",fontFamily:rtl?"'Noto Sans Hebrew',sans-serif":"'Cormorant Garamond',serif"}}>
+              {t.nav[p]}
+            </button>
           ))}
-          {user&&<span className={`nl ${page==="orders"?"on":""}`} onClick={()=>go("orders")} style={{fontFamily:rtl?"'Noto Sans Hebrew',sans-serif":"'Cormorant Garamond',serif"}}>{t.nav.orders}</span>}
+          {user&&<button role="listitem" className={`nl ${page==="orders"?"on":""}`} onClick={()=>go("orders")} aria-current={page==="orders"?"page":undefined} style={{background:"none",border:"none",fontFamily:rtl?"'Noto Sans Hebrew',sans-serif":"'Cormorant Garamond',serif"}}>{t.nav.orders}</button>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <button style={{cursor:"pointer",padding:"4px 10px",border:"1px solid #E5DDD0",borderRadius:18,background:"transparent",fontSize:10.5,fontFamily:"inherit",color:"#2C2416",transition:"all 0.3s"}} onClick={()=>setLang(lang==="en"?"he":"en")}>{lang==="en"?"עברית":"EN"}</button>
-          {user?<button style={{cursor:"pointer",padding:"4px 10px",border:"1px solid #E5DDD0",borderRadius:18,background:"transparent",fontSize:10,fontFamily:"inherit",color:"#8B7355"}} title={user.email} onClick={()=>go("profile")}>👤</button>
-          :<button style={{cursor:"pointer",padding:"4px 10px",border:"1px solid #E5DDD0",borderRadius:18,background:"transparent",fontSize:10,fontFamily:"inherit",color:"#2C2416"}} onClick={()=>{setAuthModal("login");setAuthErr("");}}>{t.nav.login}</button>}
-          <button className="cnb" onClick={()=>{setCartOpen(true);setStep(0)}}>🛒{cc>0&&<span className="nb">{cc}</span>}</button>
-          <button className="ham" onClick={()=>setMobileMenu(!mobileMenu)}>☰</button>
+          <button style={{cursor:"pointer",padding:"6px 12px",border:"1px solid var(--parchment)",borderRadius:18,background:"transparent",fontSize:10.5,fontFamily:"inherit",color:"var(--ink)",transition:"all 0.3s",minHeight:36}} onClick={()=>setLang(lang==="en"?"he":"en")} aria-label={lang==="en"?"Switch to Hebrew":"Switch to English"}>{lang==="en"?"עברית":"EN"}</button>
+          {user
+            ?<button style={{cursor:"pointer",padding:"6px 12px",border:"1px solid var(--parchment)",borderRadius:18,background:"transparent",fontSize:13,fontFamily:"inherit",color:"var(--earth)",minHeight:36}} aria-label={`${t.nav.profile}: ${user.email}`} onClick={()=>go("profile")}>👤</button>
+            :<button style={{cursor:"pointer",padding:"6px 12px",border:"1px solid var(--parchment)",borderRadius:18,background:"transparent",fontSize:10.5,fontFamily:"inherit",color:"var(--ink)",minHeight:36}} onClick={()=>{setAuthModal("login");setAuthErr("");}}>
+              {t.nav.login}
+            </button>
+          }
+          <button className="cnb" onClick={()=>{setCartOpen(true);setStep(0)}}
+            aria-label={lang==="en"?`Shopping cart, ${cc} item${cc!==1?"s":""}`:`עגלת קניות, ${cc} פריטים`}
+            aria-haspopup="true" aria-expanded={cartOpen}>
+            🛒{cc>0&&<span className="nb" aria-hidden="true">{cc}</span>}
+          </button>
+          <button className="ham" onClick={()=>setMobileMenu(!mobileMenu)}
+            aria-label={mobileMenu?(lang==="en"?"Close menu":"סגור תפריט"):(lang==="en"?"Open menu":"פתח תפריט")}
+            aria-expanded={mobileMenu} aria-controls="mobile-menu">
+            {mobileMenu?"✕":"☰"}
+          </button>
         </div>
       </nav>
 
-      {mobileMenu&&<div className="mm mobile-menu"><button onClick={()=>setMobileMenu(false)} style={{position:"absolute",top:20,right:20,left:"auto",cursor:"pointer",background:"none",border:"none",fontSize:22,opacity:0.4}}>✕</button>{["home","shop","subscriptions","loyalty","about"].map(p=>(<span key={p} className={`nl ${page===p?"on":""}`} onClick={()=>go(p)}>{t.nav[p]}</span>))}
-        {user&&<span className={`nl ${page==="orders"?"on":""}`} onClick={()=>go("orders")}>{t.nav.orders}</span>}
-        {!user&&<span className="nl" onClick={()=>{setMobileMenu(false);setAuthModal("login");}}>{t.nav.login}</span>}
-        {user&&<span className="nl" onClick={()=>{setMobileMenu(false);doLogout();}}>{t.nav.logout}</span>}
-        <div style={{borderTop:"1px solid #E5DDD0",marginTop:"auto",paddingTop:16,display:"flex",gap:12}}>
-          <button onClick={()=>{setMobileMenu(false);setAdminMode(true);}} style={{cursor:"pointer",background:"none",border:"1px solid #E5DDD0",borderRadius:8,padding:"10px 16px",fontSize:12,fontFamily:"inherit",color:"#666",flex:1}}>{t.footer.admin}</button>
-          <button onClick={()=>{setMobileMenu(false);setEmpMode(true);}} style={{cursor:"pointer",background:"none",border:"1px solid #E5DDD0",borderRadius:8,padding:"10px 16px",fontSize:12,fontFamily:"inherit",color:"#666",flex:1}}>{t.footer.employee}</button>
+      {mobileMenu&&<nav id="mobile-menu" className="mm" role="navigation" aria-label={lang==="en"?"Mobile menu":"תפריט נייד"}>
+        <button onClick={()=>setMobileMenu(false)} style={{position:"absolute",top:20,right:20,left:"auto",cursor:"pointer",background:"none",border:"none",fontSize:22,opacity:0.4,minWidth:44,minHeight:44}} aria-label={lang==="en"?"Close menu":"סגור תפריט"}>✕</button>
+        {["home","shop","subscriptions","loyalty","about"].map(p=>(<button key={p} className={`nl ${page===p?"on":""}`} onClick={()=>go(p)} aria-current={page===p?"page":undefined} style={{background:"none",border:"none",textAlign:rtl?"right":"left"}}>{t.nav[p]}</button>))}
+        {user&&<button className={`nl ${page==="orders"?"on":""}`} onClick={()=>go("orders")} aria-current={page==="orders"?"page":undefined} style={{background:"none",border:"none",textAlign:rtl?"right":"left"}}>{t.nav.orders}</button>}
+        {!user&&<button className="nl" onClick={()=>{setMobileMenu(false);setAuthModal("login");}} style={{background:"none",border:"none",textAlign:rtl?"right":"left"}}>{t.nav.login}</button>}
+        {user&&<button className="nl" onClick={()=>{setMobileMenu(false);doLogout();}} style={{background:"none",border:"none",textAlign:rtl?"right":"left"}}>{t.nav.logout}</button>}
+        <div style={{borderTop:"1px solid var(--parchment)",marginTop:"auto",paddingTop:16,display:"flex",gap:12}}>
+          <button onClick={()=>{setMobileMenu(false);setAdminMode(true);}} style={{cursor:"pointer",background:"none",border:"1px solid var(--parchment)",borderRadius:8,padding:"10px 16px",fontSize:12,fontFamily:"inherit",color:"#666",flex:1,minHeight:44}}>{t.footer.admin}</button>
+          <button onClick={()=>{setMobileMenu(false);setEmpMode(true);}} style={{cursor:"pointer",background:"none",border:"1px solid var(--parchment)",borderRadius:8,padding:"10px 16px",fontSize:12,fontFamily:"inherit",color:"#666",flex:1,minHeight:44}}>{t.footer.employee}</button>
         </div>
-      </div>}
+      </nav>}
 
       {/* FLOATING CHAT + BACK TO TOP */}
-      <button className="wa" title="Support Chat" onClick={()=>setChatOpen(!chatOpen)}>💬</button>
+      <button className="wa" onClick={()=>setChatOpen(!chatOpen)}
+        aria-label={lang==="en"?"Open support chat":"פתח צ׳אט תמיכה"}
+        aria-haspopup="true" aria-expanded={chatOpen}>💬</button>
       <ChatWidget lang={lang} open={chatOpen} onClose={()=>setChatOpen(false)}/>
-      {showBackTop&&<button className="btt" onClick={()=>window.scrollTo({top:0,behavior:"smooth"})}>{t.backTop}</button>}
+      {showBackTop&&<button className="btt" onClick={()=>window.scrollTo({top:0,behavior:"smooth"})}
+        aria-label={lang==="en"?"Back to top":"חזור לראש הדף"}>{t.backTop}</button>}
 
       {/* ═══ AUTH MODAL ═══ */}
       {authModal&&(<div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(44,36,22,0.5)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(5px)",animation:"fadeIn 0.2s",padding:20}} onClick={()=>setAuthModal(null)}>
@@ -949,27 +1038,40 @@ export default function GOA() {
 
       {/* ═══ ORDER SUCCESS ═══ */}
       {orderInfo&&(
-        <div className="suc" onClick={()=>setOrderInfo(null)}>
+        <div className="suc" onClick={()=>setOrderInfo(null)} role="dialog" aria-modal="true" aria-label={lang==="en"?"Order confirmed":"הזמנה אושרה"}>
           <div className="succ" onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:44,marginBottom:14,color:"#5C7C5C"}}>✓</div>
-            <div style={{fontSize:20,fontFamily:"'Playfair Display',serif",marginBottom:8}}>{t.orderDone.title}</div>
-            <div style={{color:"#8B7355",fontSize:13.5,marginBottom:12}}>{t.orderDone.msg}</div>
-            <div style={{background:"#FFF5E5",border:"1px solid #E5D4B3",borderRadius:10,padding:14,marginBottom:16,fontSize:12.5,color:"#7A5C1E",textAlign:S}}>
-              {orderInfo.payMethod==="stripe"
-                ? (lang==="en"
-                    ?"💳 You're being redirected to secure payment. If not redirected, contact us on WhatsApp."
-                    :"💳 הנך מועבר לדף התשלום המאובטח. אם לא הועברת, צור קשר בוואטסאפ.")
-                : (lang==="en"
-                    ?"💵 Pay in cash upon delivery. Our team will confirm your order shortly."
-                    :"💵 תשלום במזומן עם המשלוח. הצוות שלנו יאשר את ההזמנה בקרוב.")
-              }
+            <div style={{fontSize:44,marginBottom:8}} role="img" aria-label="Success">✅</div>
+            <div style={{fontSize:20,fontFamily:"'Playfair Display',serif",marginBottom:6}}>{t.orderDone.title}</div>
+            <div style={{color:"var(--ink-soft)",fontSize:13.5,marginBottom:16,opacity:0.7}}>{t.orderDone.msg}</div>
+
+            {/* What happens next */}
+            <div style={{background:"var(--sage-pale)",border:"1px solid rgba(92,122,92,0.2)",borderRadius:12,padding:16,marginBottom:14,fontSize:12.5,color:"var(--sage)",textAlign:"start"}}>
+              <div style={{fontWeight:700,marginBottom:8,fontSize:13}}>
+                {lang==="en"?"✅ What happens next?":"✅ מה קורה עכשיו?"}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,opacity:0.9}}>
+                <div>📱 {lang==="en"?"We'll confirm your order on WhatsApp within 30 minutes":"נאשר את הזמנתך בוואטסאפ תוך 30 דקות"}</div>
+                <div>📦 {lang==="en"?"You'll get a message when it's packed and ready":"תקבל הודעה כשהסחורה ארוזה ומוכנה"}</div>
+                {orderInfo.method==="pickup"
+                  ? <div>🏪 {lang==="en"?"Come to King George 31 at your chosen time":"הגע/י לחנות בשעה שבחרת — המלך ג׳ורג׳ 31"}</div>
+                  : <div>🚚 {lang==="en"?"Our driver will call before arrival":"השליח יתקשר לפני ההגעה"}</div>
+                }
+                {orderInfo.payMethod!=="stripe"&&<div>💵 {lang==="en"?"Pay cash to the driver on delivery":"תשלם/י במזומן לשליח עם קבלת הסחורה"}</div>}
+              </div>
             </div>
-            <div style={{background:"#FAF7F0",borderRadius:10,padding:16,marginBottom:20,fontSize:13,textAlign:S}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{opacity:0.5}}>{t.orderDone.delivery}</span><span>{orderInfo.date?fmtD(orderInfo.date,lang):""}</span></div>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{opacity:0.5}}>{t.orderDone.time}</span><span>{orderInfo.slot?t.cart[orderInfo.slot]:""}</span></div>
-              <div style={{display:"flex",justifyContent:"space-between",fontWeight:600,borderTop:"1px solid #E5DDD0",paddingTop:8,marginTop:4}}><span>{t.orderDone.total}</span><span>₪{orderInfo.total}</span></div>
+
+            {orderInfo.payMethod==="stripe"&&(
+              <div style={{background:"var(--gold-pale)",border:"1px solid rgba(196,169,125,0.3)",borderRadius:10,padding:12,marginBottom:14,fontSize:12,color:"var(--earth)"}}>
+                💳 {lang==="en"?"You're being redirected to secure payment. If not redirected, contact us on WhatsApp.":"הנך מועבר לדף התשלום המאובטח. אם לא הועברת, צור קשר בוואטסאפ."}
+              </div>
+            )}
+
+            <div style={{background:"var(--cream-dark)",borderRadius:10,padding:14,marginBottom:20,fontSize:13,textAlign:"start"}}>
+              {orderInfo.method==="deliver"&&orderInfo.date&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{opacity:0.5}}>{t.orderDone.delivery}</span><span>{fmtD(orderInfo.date,lang)}</span></div>}
+              {orderInfo.method==="deliver"&&orderInfo.slot&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{opacity:0.5}}>{t.orderDone.time}</span><span>{t.cart[orderInfo.slot]||""}</span></div>}
+              <div style={{display:"flex",justifyContent:"space-between",fontWeight:600,borderTop:"1px solid var(--parchment)",paddingTop:8,marginTop:4}}><span>{t.orderDone.total}</span><span style={{color:"var(--earth)"}}>₪{orderInfo.total}</span></div>
             </div>
-            <button className="mb" onClick={()=>{setOrderInfo(null);go("home")}}>{t.orderDone.dismiss}</button>
+            <button className="mb" onClick={()=>{setOrderInfo(null);go("home")}} autoFocus>{t.orderDone.dismiss}</button>
           </div>
         </div>
       )}
@@ -1126,23 +1228,69 @@ export default function GOA() {
               ))}
             </div>
             {cart.length>0&&(
-              <div style={{padding:"16px 22px",borderTop:"1px solid #F0EBE3",background:"#FAF7F0",flexShrink:0}}>
+              <div style={{padding:"16px 22px",borderTop:"1px solid var(--parchment)",background:"var(--cream-dark)",flexShrink:0}}>
+                {/* Delivery progress toward free shipping */}
+                {deliveryMethod!=="pickup"&&sub<250&&(
+                  <div className="delivery-progress" role="status" aria-live="polite">
+                    <span>🚚</span>
+                    <div style={{flex:1}}>
+                      <div>{lang==="en"?`Add ₪${fmtPrice(250-sub)} more for free delivery`:`הוסף ₪${fmtPrice(250-sub)} למשלוח חינם`}</div>
+                      <div className="delivery-progress-bar">
+                        <div className="delivery-progress-fill" style={{width:`${Math.min(100,(sub/250)*100)}%`}}/>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {deliveryMethod!=="pickup"&&sub>=250&&(
+                  <div className="delivery-progress" role="status">
+                    <span>🎉</span>
+                    <span>{lang==="en"?"You've unlocked free delivery!":"זכית במשלוח חינם!"}</span>
+                  </div>
+                )}
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontSize:13,opacity:0.6}}><span>{t.cart.subtotal}</span><span>₪{sub}</span></div>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontSize:13,opacity:0.6}}><span>{t.cart.delivery}</span><span>{delFee===0?(lang==="en"?"Free ✨":"חינם ✨"):`₪${delFee}`}</span></div>
-                {delFee>0&&<div style={{fontSize:10.5,opacity:0.3,marginBottom:4}}>{t.cart.freeOver} · {lang==="en"?`₪15 over ₪150`:`₪15 מעל ₪150`}</div>}
-                <div style={{display:"flex",justifyContent:"space-between",fontWeight:600,fontSize:17,fontFamily:"'Playfair Display',serif",borderTop:"1px solid #E5DDD0",paddingTop:10,marginTop:6,marginBottom:14}}><span>{t.cart.total}</span><span>₪{tot}</span></div>
-                {sub<100?<div style={{textAlign:"center",padding:10,background:"#FFF5E5",borderRadius:8,fontSize:12.5,color:"#8B7355"}}>{t.cart.belowMin.replace("{n}",100-sub)}</div>
-                :<button className="mb" onClick={()=>setStep(1)}>{t.cart.checkout}</button>}
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontSize:13,opacity:0.6}}>
+                  <span>{t.cart.delivery}</span>
+                  <span>{delFee===0?(lang==="en"?"Free ✨":"חינם ✨"):`₪${delFee}`}</span>
+                </div>
+                {delFee>0&&<div style={{fontSize:10.5,opacity:0.35,marginBottom:4}}>{lang==="en"?"Free delivery over ₪250":"משלוח חינם מעל ₪250"}</div>}
+                <div style={{display:"flex",justifyContent:"space-between",fontWeight:600,fontSize:17,fontFamily:"'Playfair Display',serif",borderTop:"1px solid var(--parchment)",paddingTop:10,marginTop:6,marginBottom:14}}>
+                  <span>{t.cart.total}</span><span>₪{tot}</span>
+                </div>
+                {sub<100
+                  ? <div role="alert" style={{textAlign:"center",padding:10,background:"var(--gold-pale)",borderRadius:8,fontSize:12.5,color:"var(--earth)"}}>{t.cart.belowMin.replace("{n}",fmtPrice(100-sub))}</div>
+                  : <button className="mb" onClick={()=>setStep(1)} aria-label={lang==="en"?`Proceed to checkout, total ₪${tot}`:`המשך לתשלום, סה"כ ₪${tot}`}>{t.cart.checkout}</button>
+                }
               </div>
             )}
           </>):(
             <div style={{flex:1,overflowY:"auto",padding:"16px 22px"}}>
-              {/* Progress indicator */}
-              <div style={{display:"flex",gap:4,marginBottom:20}}>
-                {[cName.trim()&&phoneValid&&cAddr.trim(), delDate, timeSlot].map((done,i)=>(
-                  <div key={i} style={{flex:1,height:3,borderRadius:2,background:done?"#8B7355":"#E5DDD0",transition:"background 0.3s"}}/>
-                ))}
-              </div>
+              {/* Step indicator */}
+              {(()=>{
+                const steps = deliveryMethod==="pickup"
+                  ? [t.cart.yourOrder, t.cart.contact, lang==="en"?"Confirm":"אישור"]
+                  : [t.cart.yourOrder, t.cart.contact, lang==="en"?"Delivery":"משלוח", lang==="en"?"Confirm":"אישור"];
+                const doneCount = [
+                  cart.length>0,
+                  cName.trim()&&phoneValid&&emailValid,
+                  deliveryMethod==="pickup"||(delDate&&timeSlot)
+                ].filter(Boolean).length;
+                return(
+                  <nav className="checkout-steps" aria-label={lang==="en"?"Checkout steps":"שלבי תשלום"}>
+                    {steps.map((label,i)=>{
+                      const isDone = i < doneCount;
+                      const isActive = i === doneCount;
+                      return(
+                        <div key={i} className={`checkout-step ${isDone?"done":""} ${isActive?"active":""}`}>
+                          <div className="checkout-step-dot" aria-current={isActive?"step":undefined}>
+                            {isDone?"✓":(i+1)}
+                          </div>
+                          <span className="checkout-step-label">{label}</span>
+                        </div>
+                      );
+                    })}
+                  </nav>
+                );
+              })()}
               {/* Order summary */}
               <div style={{marginBottom:22}}>
                 <div className="sl">{t.cart.yourOrder}</div>
@@ -1255,7 +1403,7 @@ export default function GOA() {
       </>)}
 
       {/* ═══ PAGES ═══ */}
-      <div>
+      <main id="main-content">
         {/* HOME */}
         {page==="home"&&(
           <div style={{animation:"fadeIn 0.5s"}}>
@@ -1392,7 +1540,9 @@ export default function GOA() {
           </div>
         )}
 
-        {/* SUBSCRIPTIONS */}
+        {/* SUBSCRIPTIONS — deferred until first visit */}
+        {mountedPages.has("subscriptions")&&(
+        <div style={{display:page==="subscriptions"?"block":"none"}}>
         {page==="subscriptions"&&(
           <div style={{maxWidth:900,margin:"0 auto",padding:"44px 24px 60px",animation:"fadeIn 0.3s"}}>
             <div style={{textAlign:"center",marginBottom:36}}>
@@ -1414,8 +1564,11 @@ export default function GOA() {
             </div>
           </div>
         )}
+        </div>)}
 
-        {/* LOYALTY */}
+        {/* LOYALTY — deferred until first visit */}
+        {mountedPages.has("loyalty")&&(
+        <div style={{display:page==="loyalty"?"block":"none"}}>
         {page==="loyalty"&&(
           <div style={{maxWidth:620,margin:"0 auto",padding:"44px 24px 60px",animation:"fadeIn 0.3s"}}>
             <div style={{textAlign:"center",marginBottom:32}}>
@@ -1439,8 +1592,11 @@ export default function GOA() {
             </div>
           </div>
         )}
+        </div>)}
 
-        {/* ABOUT */}
+        {/* ABOUT — deferred until first visit */}
+        {mountedPages.has("about")&&(
+        <div style={{display:page==="about"?"block":"none"}}>
         {page==="about"&&(
           <div style={{maxWidth:620,margin:"0 auto",padding:"44px 24px 60px",animation:"fadeIn 0.3s"}}>
             <div style={{textAlign:"center",marginBottom:32}}>
@@ -1471,6 +1627,7 @@ export default function GOA() {
             </div>
           </div>
         )}
+        </div>)}
 
         {/* MY ORDERS */}
         {page==="orders"&&(
@@ -1600,9 +1757,7 @@ export default function GOA() {
             )}
           </div>
         )}
-      </div>
-
-      {/* MOBILE BOTTOM NAV */}
+      </main>
       <div className="mob-nav">
         <div className="mob-nav__items">
           <button className={`mob-nav__btn ${page==="home"?"on":""}`} onClick={()=>go("home")}>

@@ -1,163 +1,20 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense, lazy } from "react";
 import "./goa.css";
-// Firebase — only import what's used (tree-shaken)
-import { initializeApp } from "firebase/app";
-import {
-  getFirestore, collection, doc,
-  onSnapshot, addDoc, updateDoc, deleteDoc,
-  increment, serverTimestamp
-} from "firebase/firestore";
-import {
-  getAuth, signInAnonymously, onAuthStateChanged,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
-} from "firebase/auth";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
-/* ═══ FIREBASE INIT ═══ */
-const firebaseConfig = {
-  apiKey: "AIzaSyClEGJ71kv39LIGTthR8Yua9DwWLqjs-YY",
-  authDomain: "goa-boutique-greengrocer.firebaseapp.com",
-  projectId: "goa-boutique-greengrocer",
-  storageBucket: "goa-boutique-greengrocer.firebasestorage.app",
-  messagingSenderId: "346864761258",
-  appId: "1:346864761258:web:bb72c3f870e8194e1f53d3",
-  measurementId: "G-YDLPET8TBK"
-};
-const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
-const auth = getAuth(fbApp);
-const storage = getStorage(fbApp);
-const PRODUCTS_COL = collection(db, "artifacts/goa-boutique-prod/public/data/products");
-const ORDERS_COL = collection(db, "artifacts/goa-boutique-prod/public/data/orders");
-const CATEGORIES_COL = collection(db, "artifacts/goa-boutique-prod/public/data/categories");
-const prodDoc = (id) => doc(db, "artifacts/goa-boutique-prod/public/data/products", String(id));
-const orderDoc = (id) => doc(db, "artifacts/goa-boutique-prod/public/data/orders", id);
-const catDoc = (id) => doc(db, "artifacts/goa-boutique-prod/public/data/categories", id);
+// Firebase — only what the main bundle needs
+import { onSnapshot, addDoc, updateDoc, increment } from "firebase/firestore";
+import { signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 
-/* ═══ CONFIG ═══ */
-const WA_PHONE = "972504445272";
-// Stripe — set your publishable key here (starts with pk_live_ or pk_test_)
-// Also set STRIPE_PAYMENT_LINK to a Stripe Payment Link URL you created in the dashboard
-// e.g. "https://buy.stripe.com/xxxx"
-const STRIPE_PK = "";   // leave empty to disable Stripe
-const STRIPE_LINK = ""; // your Stripe Payment Link base URL
-const ADMIN_PIN = "1234";
-const EMP_PIN = "5678";
-/* LS helper kept for non-critical data (user prefs) */
-const LS = (k,v) => { try { if(v!==undefined) localStorage.setItem(k,JSON.stringify(v)); const s=localStorage.getItem(k); return s?JSON.parse(s):null; } catch{ return null; } };
+// Shared modules
+import { db, auth, PRODUCTS_COL, ORDERS_COL, CATEGORIES_COL, prodDoc, orderDoc } from "./firebase.js";
+import { T, WA_PHONE, STRIPE_LINK, UNIT_KEYS, UNIT_LABELS, MAX_P, fmtPrice, getDates, fmtD, SLOTS, IL_CITIES, SUBS, DEFAULT_CATS } from "./constants.js";
 
-/* ═══ i18n ═══ */
-const T = {
-  en: {
-    nav:{home:"Home",shop:"Shop",subscriptions:"Subscriptions",loyalty:"Rewards",about:"About",orders:"My Orders",login:"Login",logout:"Logout",profile:"Profile"},
-    hero:{subtitle:"BOUTIQUE GREENGROCER",tagline:"Where Nature Meets Luxury",cta:"Explore Collection",since:"King George 31, Tel Aviv"},
-    banner:"Free delivery on orders over ₪250 · New weekly subscription boxes available",
-    categories:{all:"All",fruits:"Fruits",vegetables:"Vegetables",herbs:"Herbs & Spices",dairy:"Dairy & Eggs",pantry:"Pantry",organic:"Organic"},
-    product:{add:"Add",added:"✓",notes:"Special requests...",perKg:"/kg",perUnit:"/unit",perPack:"/pack",oos:"Out of Stock"},
-    cart:{title:"Your Selection",empty:"Your cart is empty",emptyMsg:"Browse our collection and add your favorites",subtotal:"Subtotal",delivery:"Delivery",total:"Total",checkout:"Proceed to Checkout",minimum:"Minimum order ₪100",belowMin:"Add ₪{n} more to reach minimum",deliveryDate:"Delivery Date",timeSlot:"Time Slot",morning:"Morning (8–12)",afternoon:"Afternoon (12–17)",evening:"Evening (17–21)",cash:"Cash on Delivery",card:"Pay Online",payMethod:"Payment",placeOrder:"Place Order",freeOver:"Free over ₪250",back:"Back to Cart",items:"items",yourOrder:"Your Order",contact:"Contact Details",name:"Full Name",phone:"Phone Number",email:"Email (optional)",address:"Delivery Address",addressHint:"Street, building, apartment, floor",orderNote:"Order Notes (optional)",pickup:"Self Pickup",pickupNote:"Pickup from store: King George 31, Tel Aviv",deliveryMethod:"Delivery Method",deliver:"Home Delivery"},
-    sub:{title:"Weekly Baskets",subtitle:"Curated selections delivered to your door every week",small:"Essential",medium:"Family",large:"Gourmet",smallD:"Seasonal fruits & veg for 1–2 people",mediumD:"A generous mix for the whole family",largeD:"Premium selection with exotic items",subscribe:"Subscribe",pw:"/week",items:"items/week"},
-    loyalty:{title:"GOA Rewards",subtitle:"Every purchase earns points towards exclusive rewards",points:"Points",tier:"Tier",silver:"Silver",earn:"Earn 1 pt per ₪10 spent",redeem:"Redeem for discounts & free delivery",freeDel:"Free delivery at Gold tier",exclusive:"Exclusive member offers",toGold:"pts to Gold"},
-    about:{title:"Our Story",text:"GOA Boutique Greengrocer brings the finest, freshest produce to the heart of Tel Aviv. Located on King George 31, we source directly from local farms and premium importers to deliver an unmatched grocery experience.",visit:"Visit Us",addr:"King George 31, Tel Aviv",wa:"Chat on WhatsApp",hours:"Sun–Thu 7AM–9PM · Fri 7AM–3PM",open:"Open Chat"},
-    footer:{rights:"All rights reserved",admin:"Admin",employee:"Staff"},
-    search:"Search products...",
-    sort:{label:"Sort",pAsc:"Price ↑",pDesc:"Price ↓",name:"Name A–Z"},
-    filter:{showing:"Showing",of:"of",products:"products",clear:"Clear all",price:"Max price"},
-    shopNow:"Shop Now",viewAll:"View All Products",freshToday:"FRESH TODAY",seasonal:"Seasonal Highlights",
-    organic:"Organic",seasonalTag:"Seasonal",popular:"Popular",backTop:"↑",catQuick:"Shop by Category",
-    orderDone:{title:"Thank You!",msg:"Your order has been sent via WhatsApp",delivery:"Delivery",time:"Time Slot",total:"Total",dismiss:"Continue Shopping"},
-    auth:{login:"Login",signup:"Sign Up",email:"Email",password:"Password",noAcc:"Don't have an account?",haveAcc:"Already have an account?"},
-    myOrders:{title:"My Orders",empty:"No orders yet — start shopping!",reorder:"Reorder",date:"Date",items:"Items",total:"Total"},
-    profile:{title:"My Profile",addresses:"Saved Addresses",addAddr:"+ Add Address",noAddr:"No saved addresses",street:"Street & Number",city:"City",floor:"Floor",apt:"Apartment",entry:"Entry Code",saveAddr:"Save Address",deleteAddr:"Delete",payment:"Payment Methods",addCard:"+ Add Card",noCards:"No saved cards",cardNum:"Card Number",cardName:"Cardholder Name",cardExp:"Expiry (MM/YY)",saveCard:"Save Card",deleteCard:"Delete",points:"Loyalty Points",tier:"Tier",silver:"Silver",gold:"Gold"},
-    admin:{title:"Admin Dashboard",qty:"Quantity",pin:"Enter PIN",products:"Product Manager",name:"Name (EN)",nameHe:"Name (HE)",price:"Price",cat:"Category",unit:"Unit",image:"Image URL",origin:"Origin (EN)",originHe:"Origin (HE)",stock:"Stock",inStock:"In Stock",outOfStock:"Out of Stock",save:"Save",add:"+ Add Product",del:"Delete",edit:"Edit",cancel:"Cancel"},
-    emp:{title:"Employee Dashboard",accept:"Accept",processing:"Processing",finalize:"Finalize Order",pending:"Pending",completed:"Completed",actualWt:"Actual Weight (kg)",recalc:"Recalculated",noOrders:"No orders yet",alertNew:"NEW!",liveOrders:"Live Orders",back:"← Back to Store"},
-    chat:{title:"GOA Support",askHours:"What are your hours?",askZones:"Delivery zones?",askHuman:"Talk to a human",hoursA:"We're open Sun–Thu 7AM–9PM and Fri 7AM–3PM 🕐",zonesA:"We deliver across Tel Aviv, Ramat Gan, Givatayim, and Herzliya 🚚",humanA:"Connecting you to WhatsApp...",placeholder:"Type a message...",bot:"GOA Bot",you:"You"}
-  },
-  he: {
-    nav:{home:"בית",shop:"חנות",subscriptions:"מנויים",loyalty:"מועדון",about:"אודות",orders:"ההזמנות שלי",login:"התחברות",logout:"התנתקות",profile:"פרופיל"},
-    hero:{subtitle:"ירקניית בוטיק",tagline:"כשהטבע פוגש יוקרה",cta:"גלה את האוסף",since:"המלך ג׳ורג׳ 31, תל אביב"},
-    banner:"משלוח חינם בהזמנות מעל ₪250 · חדש: סלים שבועיים במנוי",
-    categories:{all:"הכל",fruits:"פירות",vegetables:"ירקות",herbs:"תבלינים",dairy:"חלב וביצים",pantry:"מזווה",organic:"אורגני"},
-    product:{add:"הוסף",added:"✓",notes:"בקשות מיוחדות...",perKg:"/ק״ג",perUnit:"/יחידה",perPack:"/חבילה",oos:"אזל מהמלאי"},
-    cart:{title:"הבחירה שלך",empty:"העגלה ריקה",emptyMsg:"גלו את המבחר שלנו",subtotal:"סכום ביניים",delivery:"משלוח",total:"סה״כ",checkout:"המשך לתשלום",minimum:"הזמנה מינימלית ₪100",belowMin:"הוסף עוד ₪{n} להזמנה מינימלית",deliveryDate:"תאריך משלוח",timeSlot:"שעת משלוח",morning:"בוקר (8–12)",afternoon:"צהריים (12–17)",evening:"ערב (17–21)",cash:"מזומן בעת משלוח",card:"תשלום אונליין",payMethod:"תשלום",placeOrder:"בצע הזמנה",freeOver:"חינם מעל ₪250",back:"חזרה לעגלה",items:"פריטים",yourOrder:"ההזמנה שלך",contact:"פרטי התקשרות",name:"שם מלא",phone:"מספר טלפון",email:"אימייל (אופציונלי)",address:"כתובת למשלוח",addressHint:"רחוב, בניין, דירה, קומה",orderNote:"הערות להזמנה (אופציונלי)",pickup:"איסוף עצמי",pickupNote:"איסוף מהחנות: המלך ג׳ורג׳ 31, תל אביב",deliveryMethod:"אופן קבלה",deliver:"משלוח עד הבית"},
-    sub:{title:"סלים שבועיים",subtitle:"מבחר שנאסף במיוחד ומגיע אליך כל שבוע",small:"בסיסי",medium:"משפחתי",large:"גורמה",smallD:"פירות וירקות עונתיים ל-1-2 אנשים",mediumD:"מבחר נדיב לכל המשפחה",largeD:"מבחר פרימיום עם פריטים אקזוטיים",subscribe:"הירשם",pw:"/שבוע",items:"פריטים/שבוע"},
-    loyalty:{title:"מועדון GOA",subtitle:"כל רכישה צוברת נקודות להטבות בלעדיות",points:"נקודות",tier:"דרגה",silver:"כסף",earn:"נקודה על כל ₪10",redeem:"מימוש להנחות ומשלוח חינם",freeDel:"משלוח חינם בדרגת זהב",exclusive:"הצעות בלעדיות לחברים",toGold:"נקודות לזהב"},
-    about:{title:"הסיפור שלנו",text:"GOA ירקניית בוטיק מביאה את התוצרת הטרייה והמובחרת ביותר ללב תל אביב. ממוקמת ברחוב המלך ג׳ורג׳ 31, אנו עובדים ישירות עם חקלאים מקומיים ויבואנים מובחרים כדי להעניק חוויית קנייה ללא תחרות.",visit:"בקרו אותנו",addr:"המלך ג׳ורג׳ 31, תל אביב",wa:"וואטסאפ",hours:"א׳–ה׳ 7:00–21:00 · ו׳ 7:00–15:00",open:"פתח צ׳אט"},
-    footer:{rights:"כל הזכויות שמורות",admin:"ניהול",employee:"צוות"},
-    search:"חפש מוצרים...",
-    sort:{label:"מיון",pAsc:"מחיר ↑",pDesc:"מחיר ↓",name:"שם א–ת"},
-    filter:{showing:"מציג",of:"מתוך",products:"מוצרים",clear:"נקה",price:"מחיר מקסימלי"},
-    shopNow:"קנה עכשיו",viewAll:"כל המוצרים",freshToday:"טרי היום",seasonal:"מיוחדי העונה",
-    organic:"אורגני",seasonalTag:"עונתי",popular:"פופולרי",backTop:"↑",catQuick:"קנייה לפי קטגוריה",
-    orderDone:{title:"תודה רבה!",msg:"ההזמנה שלך נשלחה בוואטסאפ",delivery:"משלוח",time:"שעת משלוח",total:"סה״כ",dismiss:"המשך קנייה"},
-    auth:{login:"התחברות",signup:"הרשמה",email:"אימייל",password:"סיסמה",noAcc:"אין לך חשבון?",haveAcc:"כבר יש לך חשבון?"},
-    myOrders:{title:"ההזמנות שלי",empty:"אין הזמנות עדיין — התחילו לקנות!",reorder:"הזמן שוב",date:"תאריך",items:"פריטים",total:"סה״כ"},
-    profile:{title:"הפרופיל שלי",addresses:"כתובות שמורות",addAddr:"+ הוסף כתובת",noAddr:"אין כתובות שמורות",street:"רחוב ומספר",city:"עיר",floor:"קומה",apt:"דירה",entry:"קוד כניסה",saveAddr:"שמור כתובת",deleteAddr:"מחק",payment:"אמצעי תשלום",addCard:"+ הוסף כרטיס",noCards:"אין כרטיסים שמורים",cardNum:"מספר כרטיס",cardName:"שם בעל הכרטיס",cardExp:"תוקף (MM/YY)",saveCard:"שמור כרטיס",deleteCard:"מחק",points:"נקודות מועדון",tier:"דרגה",silver:"כסף",gold:"זהב"},
-    admin:{title:"לוח ניהול",qty:"כמות",pin:"הזן PIN",products:"ניהול מוצרים",name:"שם (EN)",nameHe:"שם (HE)",price:"מחיר",cat:"קטגוריה",unit:"יחידה",image:"קישור תמונה",origin:"מקור (EN)",originHe:"מקור (HE)",stock:"מלאי",inStock:"במלאי",outOfStock:"אזל",save:"שמור",add:"+ הוסף מוצר",del:"מחק",edit:"ערוך",cancel:"ביטול"},
-    emp:{title:"לוח עובדים",accept:"קבל",processing:"בעיבוד",finalize:"סיום הזמנה",pending:"ממתין",completed:"הושלם",actualWt:"משקל בפועל (ק״ג)",recalc:"חושב מחדש",noOrders:"אין הזמנות עדיין",alertNew:"חדש!",liveOrders:"הזמנות חיות",back:"→ חזרה לחנות"},
-    chat:{title:"תמיכה GOA",askHours:"מה שעות הפעילות?",askZones:"אזורי משלוח?",askHuman:"דבר עם נציג",hoursA:"אנחנו פתוחים א׳–ה׳ 7:00–21:00 ו׳ 7:00–15:00 🕐",zonesA:"אנחנו מגיעים לכל תל אביב, רמת גן, גבעתיים והרצליה 🚚",humanA:"מעביר לוואטסאפ...",placeholder:"הקלד הודעה...",bot:"בוט GOA",you:"אתה"}
-  }
-};
+// Lazy-loaded chunks — Admin, Employee, Chat load only when accessed
+const AdminView    = lazy(() => import("./components/AdminView.jsx"));
+const EmployeeView = lazy(() => import("./components/EmployeeView.jsx"));
+const ChatWidget   = lazy(() => import("./components/ChatWidget.jsx"));
 
-
-const DEFAULT_P = [
-  {id:1,n:{en:"Organic Medjool Dates",he:"תמרים מג׳הול אורגני"},price:45,u:"perKg",cat:"fruits",img:"🌴",organic:true,o:{en:"Jordan Valley",he:"בקעת הירדן"},pop:true,stock:50},
-  {id:2,n:{en:"Avocado Hass",he:"אבוקדו האס"},price:22,u:"perKg",cat:"fruits",img:"🥑",o:{en:"Northern Israel",he:"צפון הארץ"},pop:true,stock:50},
-  {id:3,n:{en:"Blood Oranges",he:"תפוזי דם"},price:18,u:"perKg",cat:"fruits",img:"🍊",seasonal:true,o:{en:"Sharon Valley",he:"עמק השרון"},stock:50},
-  {id:4,n:{en:"Pomegranate",he:"רימון"},price:15,u:"perKg",cat:"fruits",img:"🍎",o:{en:"Upper Galilee",he:"גליל עליון"},stock:50},
-  {id:5,n:{en:"Fresh Figs",he:"תאנים טריות"},price:38,u:"perKg",cat:"fruits",img:"🍐",seasonal:true,o:{en:"Judean Hills",he:"הרי יהודה"},stock:50},
-  {id:6,n:{en:"Organic Bananas",he:"בננות אורגני"},price:14,u:"perKg",cat:"fruits",img:"🍌",organic:true,o:{en:"Jordan Valley",he:"בקעת הירדן"},stock:50},
-  {id:7,n:{en:"Green Grapes",he:"ענבים ירוקים"},price:28,u:"perKg",cat:"fruits",img:"🍇",o:{en:"Negev",he:"הנגב"},stock:50},
-  {id:8,n:{en:"Mango",he:"מנגו"},price:32,u:"perKg",cat:"fruits",img:"🥭",seasonal:true,o:{en:"Arava",he:"הערבה"},pop:true,stock:50},
-  {id:9,n:{en:"Cherry Tomatoes",he:"עגבניות שרי"},price:16,u:"perKg",cat:"vegetables",img:"🍅",o:{en:"Arava",he:"הערבה"},pop:true,stock:50},
-  {id:10,n:{en:"Persian Cucumbers",he:"מלפפונים"},price:10,u:"perKg",cat:"vegetables",img:"🥒",o:{en:"Central Israel",he:"מרכז הארץ"},stock:50},
-  {id:11,n:{en:"Purple Eggplant",he:"חציל סגול"},price:12,u:"perKg",cat:"vegetables",img:"🍆",o:{en:"Jezreel Valley",he:"עמק יזרעאל"},stock:50},
-  {id:12,n:{en:"Organic Kale",he:"קייל אורגני"},price:18,u:"perPack",cat:"vegetables",img:"🥬",organic:true,o:{en:"Golan Heights",he:"רמת הגולן"},stock:50},
-  {id:13,n:{en:"Sweet Potato",he:"בטטה"},price:9,u:"perKg",cat:"vegetables",img:"🍠",o:{en:"Western Negev",he:"נגב מערבי"},stock:50},
-  {id:14,n:{en:"Baby Spinach",he:"תרד בייבי"},price:15,u:"perPack",cat:"vegetables",img:"🌿",o:{en:"Sharon Valley",he:"עמק השרון"},stock:50},
-  {id:15,n:{en:"Red Bell Pepper",he:"פלפל אדום"},price:18,u:"perKg",cat:"vegetables",img:"🌶️",o:{en:"Arava",he:"הערבה"},stock:50},
-  {id:16,n:{en:"Artichoke",he:"ארטישוק"},price:25,u:"perKg",cat:"vegetables",img:"🌻",seasonal:true,o:{en:"Coastal Plain",he:"מישור החוף"},stock:50},
-  {id:17,n:{en:"Fresh Basil",he:"בזיליקום טרי"},price:8,u:"perPack",cat:"herbs",img:"🌱",o:{en:"Local Farm",he:"חווה מקומית"},stock:50},
-  {id:18,n:{en:"Za'atar Bundle",he:"צרור זעתר"},price:12,u:"perPack",cat:"herbs",img:"🌿",o:{en:"Galilee",he:"הגליל"},pop:true,stock:50},
-  {id:19,n:{en:"Fresh Mint",he:"נענע טרייה"},price:7,u:"perPack",cat:"herbs",img:"🍃",o:{en:"Local Farm",he:"חווה מקומית"},stock:50},
-  {id:20,n:{en:"Rosemary",he:"רוזמרין"},price:8,u:"perPack",cat:"herbs",img:"🪻",o:{en:"Carmel",he:"הכרמל"},stock:50},
-  {id:21,n:{en:"Sumac",he:"סומאק"},price:22,u:"perPack",cat:"herbs",img:"🫙",o:{en:"Galilee",he:"הגליל"},stock:50},
-  {id:22,n:{en:"Saffron (1g)",he:"זעפרן (1 גר׳)"},price:65,u:"perPack",cat:"herbs",img:"✨",o:{en:"Imported",he:"מיובא"},stock:50},
-  {id:23,n:{en:"Free-Range Eggs",he:"ביצים חופש"},price:28,u:"perPack",cat:"dairy",img:"🥚",o:{en:"Kibbutz Farm",he:"משק קיבוצי"},pop:true,stock:50},
-  {id:24,n:{en:"Goat Cheese",he:"גבינת עזים"},price:35,u:"perUnit",cat:"dairy",img:"🧀",o:{en:"Golan Heights",he:"רמת הגולן"},stock:50},
-  {id:25,n:{en:"Organic Milk 1L",he:"חלב אורגני"},price:12,u:"perUnit",cat:"dairy",img:"🥛",organic:true,o:{en:"Kibbutz Farm",he:"משק קיבוצי"},stock:50},
-  {id:26,n:{en:"Labane",he:"לבנה"},price:18,u:"perUnit",cat:"dairy",img:"🫙",o:{en:"Galilee",he:"הגליל"},stock:50},
-  {id:27,n:{en:"Bulgarian Cheese",he:"גבינה בולגרית"},price:22,u:"perUnit",cat:"dairy",img:"🧀",o:{en:"Local Dairy",he:"מחלבה מקומית"},stock:50},
-  {id:28,n:{en:"Premium Olive Oil",he:"שמן זית פרימיום"},price:58,u:"perUnit",cat:"pantry",img:"🫒",o:{en:"Galilee",he:"הגליל"},pop:true,stock:50},
-  {id:29,n:{en:"Tahini",he:"טחינה"},price:32,u:"perUnit",cat:"pantry",img:"🫙",o:{en:"Nablus",he:"שכם"},pop:true,stock:50},
-  {id:30,n:{en:"Raw Honey",he:"דבש גולמי"},price:48,u:"perUnit",cat:"pantry",img:"🍯",o:{en:"Carmel",he:"הכרמל"},stock:50},
-  {id:31,n:{en:"Organic Quinoa",he:"קינואה אורגנית"},price:28,u:"perPack",cat:"pantry",img:"🌾",organic:true,o:{en:"Imported",he:"מיובא"},stock:50},
-  {id:32,n:{en:"Sourdough Bread",he:"לחם מחמצת"},price:35,u:"perUnit",cat:"pantry",img:"🍞",o:{en:"Local Bakery",he:"מאפייה מקומית"},stock:50},
-  {id:33,n:{en:"Date Spread",he:"ממרח תמרים"},price:28,u:"perUnit",cat:"pantry",img:"🫙",o:{en:"Jordan Valley",he:"בקעת הירדן"},stock:50},
-  {id:34,n:{en:"Mixed Nuts",he:"תערובת אגוזים"},price:55,u:"perKg",cat:"pantry",img:"🥜",o:{en:"Local",he:"מקומי"},stock:50},
-  {id:35,n:{en:"Dried Apricots",he:"משמש מיובש"},price:42,u:"perKg",cat:"pantry",img:"🍑",o:{en:"Turkey",he:"טורקיה"},stock:50},
-];
-const SUBS=[{id:"small",price:89,items:"8–10",icon:"🧺"},{id:"medium",price:149,items:"14–18",icon:"🏡"},{id:"large",price:229,items:"20–25",icon:"✨"}];
-const DEFAULT_CATS = [
-  {id:"fruits",icon:"🍊",label:{en:"Fruits",he:"פירות"}},
-  {id:"vegetables",icon:"🥬",label:{en:"Vegetables",he:"ירקות"}},
-  {id:"herbs",icon:"🌿",label:{en:"Herbs & Spices",he:"תבלינים"}},
-  {id:"dairy",icon:"🧀",label:{en:"Dairy & Eggs",he:"חלב וביצים"}},
-  {id:"pantry",icon:"🫙",label:{en:"Pantry",he:"מזווה"}},
-];
-const UNIT_KEYS=["perKg","perUnit","perPack"];
-const UNIT_LABELS={en:{perKg:"/kg",perUnit:"/unit",perPack:"/pack"},he:{perKg:"/ק״ג",perUnit:"/יחידה",perPack:"/חבילה"}};
-const MAX_P=80;
-
-// Price rounding: always round UP to 1 decimal place (e.g. 8.82 → 8.9)
-const roundUp1=(n)=>Math.ceil(n*10)/10;
-const fmtPrice=(n)=>roundUp1(n).toFixed(1).replace(/\.0$/,"");
-
-const IL_CITIES=["תל אביב","ירושלים","חיפה","ראשון לציון","פתח תקווה","אשדוד","נתניה","באר שבע","בני ברק","רמת גן","גבעתיים","הרצליה","כפר סבא","רעננה","הוד השרון","רחובות","בת ים","חולון","אשקלון","עפולה","נצרת עילית","קריות"];
-
-const getDates=()=>{const o=[],d=new Date();for(let i=1;i<=7;i++){const x=new Date(d);x.setDate(d.getDate()+i);if(x.getDay()!==6)o.push(x);}return o;};
-const fmtD=(d,l)=>d.toLocaleDateString(l==="he"?"he-IL":"en-US",{weekday:"short",month:"short",day:"numeric"});
-const SLOTS=["morning","afternoon","evening"];
-
+/* ═══ LOCAL HELPERS (not in constants.js) ═══ */
 /* ═══ EXTERNAL SUB-COMPONENTS (defined OUTSIDE main function — fixes focus bug) ═══ */
 const Inp = ({ val, set, ph, type="text", req, error, onBlur }) => (
   <input className="fi" type={type} placeholder={ph} value={val}
@@ -238,158 +95,7 @@ const PCard = ({p,i,sm,q,anim,onAdd,onDec,onInc,onQv,lang,t,S}) => {
   );
 };
 
-/* ═══ EMPLOYEE VIEW (external component) ═══ */
-const EmployeeView = ({orders,setOrders,lang,onBack}) => {
-  const t=T[lang];
-  const [now,setNow]=useState(Date.now());
-  const [checked,setChecked]=useState({});
-  const [empAuth,setEmpAuth]=useState(false);
-  const [empPin,setEmpPin]=useState("");
-  const toggleCheck=(orderId,idx)=>setChecked(p=>({...p,[`${orderId}-${idx}`]:!p[`${orderId}-${idx}`]}));
-  useEffect(()=>{const iv=setInterval(()=>setNow(Date.now()),2000);return()=>clearInterval(iv);},[]);
 
-  if(!empAuth) return (
-    <div style={{minHeight:"100vh",background:"#1a1a2e",color:"#eee",fontFamily:"'Segoe UI',sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{background:"#16213e",border:"1px solid #333",borderRadius:16,padding:36,textAlign:"center",maxWidth:300,width:"100%"}}>
-        <div style={{fontSize:40,marginBottom:12}}>🔐</div>
-        <div style={{fontWeight:700,fontSize:18,marginBottom:6}}>Staff Access</div>
-        <div style={{fontSize:12,opacity:0.4,marginBottom:20}}>Enter your employee PIN</div>
-        <input type="password" placeholder="PIN" value={empPin} onChange={e=>setEmpPin(e.target.value)}
-          onKeyDown={e=>e.key==="Enter"&&(empPin===EMP_PIN?setEmpAuth(true):setEmpPin(""))}
-          style={{width:"100%",padding:"10px 14px",border:"1px solid #444",borderRadius:8,background:"#0f3460",color:"#eee",fontSize:16,textAlign:"center",outline:"none",marginBottom:10,fontFamily:"inherit",direction:"ltr"}}/>
-        <button onClick={()=>{if(empPin===EMP_PIN)setEmpAuth(true);else setEmpPin("");}}
-          style={{cursor:"pointer",width:"100%",padding:"11px",background:"#25D366",color:"#fff",border:"none",borderRadius:8,fontWeight:700,fontSize:14,fontFamily:"inherit",marginBottom:8}}>Enter</button>
-        <button onClick={onBack} style={{cursor:"pointer",width:"100%",padding:"10px",background:"#333",color:"#eee",border:"none",borderRadius:8,fontSize:13,fontFamily:"inherit"}}>{t.emp.back}</button>
-      </div>
-    </div>
-  );
-
-  const acceptOrder=(id)=>{const o=orders.find(x=>x.id===id);if(o&&o._docId)updateDoc(orderDoc(o._docId),{status:"processing",acceptedAt:Date.now()});};
-  const updateWeight=(orderId,itemIdx,wt)=>{
-    const o=orders.find(x=>x.id===orderId);
-    if(!o||!o._docId)return;
-    const items=[...o.items];
-    const it={...items[itemIdx]};
-    it.actualWt=parseFloat(wt)||it.qty;
-    if(it.u==="perKg") it.actualPrice=Math.round(it.price*it.actualWt*100)/100;
-    else it.actualPrice=it.price*it.qty;
-    items[itemIdx]=it;
-    const newTotal=items.reduce((s,x)=>s+(x.actualPrice!==undefined?x.actualPrice:x.price*x.qty),0);
-    updateDoc(orderDoc(o._docId),{items,total:newTotal+o.deliveryFee});
-  };
-  const finalizeOrder=(id)=>{const o=orders.find(x=>x.id===id);if(o&&o._docId)updateDoc(orderDoc(o._docId),{status:"completed",completedAt:Date.now()});};
-
-  const pending=orders.filter(o=>o.status==="pending");
-  const processing=orders.filter(o=>o.status==="processing");
-  const completed=orders.filter(o=>o.status==="completed").slice(0,10);
-  const bs={cursor:"pointer",padding:"8px 16px",border:"none",borderRadius:8,fontSize:12,fontFamily:"inherit",fontWeight:600};
-
-  return (<div style={{minHeight:"100vh",background:"#1a1a2e",color:"#eee",fontFamily:"'Segoe UI',sans-serif",padding:20}}>
-    <div style={{maxWidth:1200,margin:"0 auto"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-        <h1 style={{fontSize:24,fontWeight:700}}>👨‍🍳 {t.emp.title}</h1>
-        <button onClick={onBack} style={{...bs,background:"#333",color:"#fff"}}>{t.emp.back}</button>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
-        {/* PENDING */}
-        <div>
-          <h3 style={{color:"#ff6b6b",marginBottom:12,fontSize:14,textTransform:"uppercase",letterSpacing:2}}>🔴 {t.emp.pending} ({pending.length})</h3>
-          {pending.length===0&&<div style={{opacity:0.3,fontSize:13}}>{t.emp.noOrders}</div>}
-          {pending.map(o=>{
-            const age=(now-o.createdAt)/1000;
-            const alert=age>30;
-            return <div key={o.id} style={{background:alert?"#4a1a1a":"#16213e",border:alert?"2px solid #ff4444":"1px solid #333",borderRadius:12,padding:14,marginBottom:10,animation:"fadeIn 0.3s"}}>
-              {alert&&<div style={{background:"#ff4444",color:"#fff",borderRadius:4,padding:"2px 8px",fontSize:10,fontWeight:700,display:"inline-block",marginBottom:8,animation:"pulse 1s infinite"}}>⚠️ {Math.round(age)}s — MANAGER ALERT</div>}
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                <span style={{fontWeight:600}}>{o.customerName}</span>
-                <span style={{fontSize:11,opacity:0.5}}>#{o.id.toString().slice(-4)}</span>
-              </div>
-              <div style={{fontSize:12,opacity:0.6,marginBottom:8}}>{o.items.map(it=>`${it.img} ${it.n[lang]} ×${it.qty}`).join(", ")}</div>
-              <div style={{fontSize:14,fontWeight:700,color:"#C4A97D",marginBottom:10}}>₪{o.total}</div>
-              <button onClick={()=>acceptOrder(o.id)} style={{...bs,background:"#25D366",color:"#fff",width:"100%"}}>{t.emp.accept}</button>
-            </div>;
-          })}
-        </div>
-        {/* PROCESSING */}
-        <div>
-          <h3 style={{color:"#ffd93d",marginBottom:12,fontSize:14,textTransform:"uppercase",letterSpacing:2}}>🟡 {t.emp.processing} ({processing.length})</h3>
-          {processing.map(o=>(<div key={o.id} style={{background:"#16213e",border:"1px solid #444",borderRadius:12,padding:14,marginBottom:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-              <span style={{fontWeight:600}}>{o.customerName}</span>
-              <span style={{fontSize:11,opacity:0.5}}>#{o.id.toString().slice(-4)}</span>
-            </div>
-            {o.items.map((it,idx)=>(<div key={idx} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #222",fontSize:12,opacity:checked[`${o.id}-${idx}`]?0.4:1,textDecoration:checked[`${o.id}-${idx}`]?"line-through":"none"}}>
-              <input type="checkbox" checked={!!checked[`${o.id}-${idx}`]} onChange={()=>toggleCheck(o.id,idx)} style={{accentColor:"#6BCB77",width:16,height:16,cursor:"pointer",flexShrink:0}}/>
-              <span>{it.img}</span>
-              <span style={{flex:1}}>{it.n[lang]} ×{it.qty}</span>
-              {it.u==="perKg"&&<div style={{display:"flex",alignItems:"center",gap:4}}>
-                <input type="number" step="0.1" min="0" placeholder={t.emp.actualWt} value={it.actualWt||""} onChange={e=>updateWeight(o.id,idx,e.target.value)}
-                  style={{width:70,padding:"4px 6px",border:"1px solid #555",borderRadius:4,background:"#0f3460",color:"#eee",fontSize:11}}/>
-                <span style={{fontSize:10,opacity:0.5}}>kg</span>
-              </div>}
-              <span style={{fontWeight:600,color:"#C4A97D",minWidth:50,textAlign:"right"}}>₪{it.actualPrice!==undefined?it.actualPrice.toFixed(0):it.price*it.qty}</span>
-            </div>))}
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:10,paddingTop:8,borderTop:"1px solid #333"}}>
-              <span style={{fontWeight:700,fontSize:16,color:"#C4A97D"}}>₪{Math.round(o.total)}</span>
-              <button onClick={()=>finalizeOrder(o.id)} style={{...bs,background:"#C4A97D",color:"#1a1a2e"}}>{t.emp.finalize}</button>
-            </div>
-          </div>))}
-        </div>
-        {/* COMPLETED */}
-        <div>
-          <h3 style={{color:"#6BCB77",marginBottom:12,fontSize:14,textTransform:"uppercase",letterSpacing:2}}>🟢 {t.emp.completed} ({completed.length})</h3>
-          {completed.map(o=>(<div key={o.id} style={{background:"#16213e",border:"1px solid #2a4a2a",borderRadius:12,padding:14,marginBottom:10,opacity:0.7}}>
-            <div style={{display:"flex",justifyContent:"space-between"}}>
-              <span>{o.customerName}</span>
-              <span style={{color:"#6BCB77",fontWeight:600}}>₪{Math.round(o.total)}</span>
-            </div>
-          </div>))}
-        </div>
-      </div>
-    </div>
-  </div>);
-};
-
-/* ═══ CHAT WIDGET (external component) ═══ */
-const ChatWidget = ({lang,open,onClose}) => {
-  const t=T[lang].chat;
-  const [msgs,setMsgs]=useState([{from:"bot",text:t.title+" 👋"}]);
-  const [input,setInput]=useState("");
-  const endRef=useRef(null);
-  useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
-  const send=(text,isQuick)=>{
-    const userMsg={from:"user",text:isQuick||text};
-    setMsgs(p=>[...p,userMsg]);
-    setTimeout(()=>{
-      let reply="";
-      const low=(isQuick||text).toLowerCase();
-      if(low.includes("hour")||low.includes("שעות")) reply=t.hoursA;
-      else if(low.includes("zone")||low.includes("deliver")||low.includes("משלוח")||low.includes("אזור")) reply=t.zonesA;
-      else if(low.includes("human")||low.includes("נציג")){reply=t.humanA;setTimeout(()=>window.open(`https://wa.me/${WA_PHONE}`,"_blank"),1500);}
-      else reply=lang==="en"?"I can help with hours, delivery zones, or connect you to a human!":"אני יכול לעזור עם שעות, אזורי משלוח, או לחבר אותך לנציג!";
-      setMsgs(p=>[...p,{from:"bot",text:reply}]);
-    },600);
-    setInput("");
-  };
-  if(!open) return null;
-  return (<div dir="ltr" style={{position:"fixed",bottom:80,right:20,width:320,maxHeight:420,background:"#FDFBF7",borderRadius:16,boxShadow:"0 10px 40px rgba(0,0,0,0.15)",zIndex:999,display:"flex",flexDirection:"column",overflow:"hidden",animation:"scaleIn 0.2s",border:"1px solid #E5DDD0"}}>
-    <div style={{background:"#2C2416",color:"#FDFBF7",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <span style={{fontWeight:600,fontSize:14}}>💬 {t.title}</span>
-      <button onClick={onClose} style={{background:"none",border:"none",color:"#FDFBF7",cursor:"pointer",fontSize:16}}>✕</button>
-    </div>
-    <div style={{flex:1,overflowY:"auto",padding:12,display:"flex",flexDirection:"column",gap:8,maxHeight:250}}>
-      {msgs.map((m,i)=>(<div key={i} style={{alignSelf:m.from==="user"?"flex-end":"flex-start",background:m.from==="user"?"#2C2416":"#F0EBE3",color:m.from==="user"?"#FDFBF7":"#2C2416",padding:"8px 12px",borderRadius:12,maxWidth:"80%",fontSize:13}}>{m.text}</div>))}
-      <div ref={endRef}/>
-    </div>
-    <div style={{padding:"8px 12px",borderTop:"1px solid #F0EBE3",display:"flex",gap:4,flexWrap:"wrap"}}>
-      {[t.askHours,t.askZones,t.askHuman].map((q,i)=>(<button key={i} onClick={()=>send(q,q)} style={{cursor:"pointer",padding:"5px 10px",border:"1px solid #E5DDD0",borderRadius:16,background:"#fff",fontSize:10.5,fontFamily:"inherit",color:"#2C2416"}}>{q}</button>))}
-    </div>
-    <div style={{padding:"8px 12px",display:"flex",gap:6}}>
-      <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&input.trim()&&send(input)} placeholder={t.placeholder} style={{flex:1,padding:"8px 12px",border:"1px solid #E5DDD0",borderRadius:20,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
-      <button onClick={()=>input.trim()&&send(input)} style={{cursor:"pointer",background:"#2C2416",color:"#fff",border:"none",borderRadius:"50%",width:32,height:32,fontSize:14}}>→</button>
-    </div>
-  </div>);
-};
 export default function GOA() {
   /* Products state — synced from Firestore */
   const [products,setProducts]=useState([]);
@@ -615,7 +321,11 @@ export default function GOA() {
   const placeOrder=()=>{
     const dateStr = delDate ? fmtD(delDate,lang) : "";
     const slotStr = timeSlot ? t.cart[timeSlot] : "";
-    const itemsStr = cart.map(i=>`• ${i.n[lang]} ×${i.qty} — ₪${fmtPrice(i.price*i.qty)}`).join("\n");
+    const itemsStr = cart.map(i=>{
+      const note = notes[i.id];
+      const line = `• ${i.n[lang]} ×${i.qty} — ₪${fmtPrice(i.price*i.qty)}`;
+      return note ? `${line}\n  📌 ${note}` : line;
+    }).join("\n");
     const payStr = payMethod==="stripe"
       ? (lang==="en"?"Credit Card (Stripe)":"כרטיס אשראי (Stripe)")
       : t.cart.cash;
@@ -811,7 +521,11 @@ export default function GOA() {
   const delCategory=async(id)=>{if(products.some(p=>p.cat===id))return;const c=categories.find(x=>x.id===id);if(c&&c._docId){try{await deleteDoc(catDoc(c._docId));}catch(e){console.error("Delete category error:",e);}}};
 
   /* Employee mode — render separate view (orders from Firestore real-time) */
-  if(empMode) return <EmployeeView orders={orderHistory} setOrders={()=>{}} lang={lang} onBack={()=>setEmpMode(false)}/>;
+  if(empMode) return (
+    <Suspense fallback={<div style={{minHeight:"100vh",background:"#1a1a2e",display:"flex",alignItems:"center",justifyContent:"center",color:"#eee",fontSize:14}}>Loading...</div>}>
+      <EmployeeView orders={orderHistory} lang={lang} onBack={()=>setEmpMode(false)}/>
+    </Suspense>
+  );
 
   return (
     <div dir={dir} style={{fontFamily:rtl?"'Noto Sans Hebrew','Segoe UI',sans-serif":"'Cormorant Garamond',Georgia,serif",background:"#FDFBF7",color:"#2C2416",minHeight:"100vh",width:"100%"}}>
@@ -893,7 +607,9 @@ export default function GOA() {
       <button className="wa" onClick={()=>setChatOpen(!chatOpen)}
         aria-label={lang==="en"?"Open support chat":"פתח צ׳אט תמיכה"}
         aria-haspopup="true" aria-expanded={chatOpen}>💬</button>
-      <ChatWidget lang={lang} open={chatOpen} onClose={()=>setChatOpen(false)}/>
+      <Suspense fallback={null}>
+        <ChatWidget lang={lang} open={chatOpen} onClose={()=>setChatOpen(false)}/>
+      </Suspense>
       {showBackTop&&<button className="btt" onClick={()=>window.scrollTo({top:0,behavior:"smooth"})}
         aria-label={lang==="en"?"Back to top":"חזור לראש הדף"}>{t.backTop}</button>}
 
@@ -912,129 +628,17 @@ export default function GOA() {
       </div>)}
 
       {/* ═══ ADMIN OVERLAY ═══ */}
-      {adminMode&&(<div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(253,251,247,0.98)",overflowY:"auto",animation:"fadeIn 0.2s",padding:20}}>
-        <div style={{maxWidth:960,margin:"0 auto"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:24}}>{t.admin.title}</h2>
-            <button className="gb" style={{width:"auto",padding:"8px 16px"}} onClick={()=>{setAdminMode(false);setAdminAuth(false);setAdminPin("");setProdModal(null);setAdminTab("products");}}>✕</button>
-          </div>
-          {!adminAuth?(<div style={{maxWidth:300,margin:"0 auto",textAlign:"center"}}><div style={{fontSize:36,marginBottom:16}}>🔐</div>
-            <input className="fi" type="password" placeholder={t.admin.pin} value={adminPin} onChange={e=>setAdminPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&adminLogin()} style={{textAlign:"center",direction:"ltr",marginBottom:12}}/>
-            <button className="mb" onClick={adminLogin}>{t.auth.login}</button>
-          </div>):(<div>
-            {/* TABS */}
-            <div style={{display:"flex",gap:6,marginBottom:20,borderBottom:"2px solid #F0EBE3",paddingBottom:8}}>
-              {["products","categories"].map(tab=>(<button key={tab} onClick={()=>setAdminTab(tab)} style={{cursor:"pointer",padding:"8px 20px",background:adminTab===tab?"#2C2416":"transparent",color:adminTab===tab?"#FDFBF7":"#2C2416",border:adminTab===tab?"none":"1px solid #E5DDD0",borderRadius:8,fontSize:12.5,fontWeight:600,fontFamily:"inherit",letterSpacing:0.5}}>{tab==="products"?(lang==="en"?"Products":"מוצרים"):(lang==="en"?"Categories":"קטגוריות")}</button>))}
-            </div>
-
-            {adminTab==="products"&&(<div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-                <div className="sl" style={{margin:0}}>{t.admin.products} ({products.length})</div>
-                <button className="cb on" style={{fontSize:12}} onClick={openAddModal}>{t.admin.add}</button>
-              </div>
-              <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12.5}}><thead><tr>
-                {["","Name","₪","Stock",""].map((h,i)=>(<th key={i} style={{textAlign:S,padding:"8px 10px",borderBottom:"2px solid #E5DDD0",fontSize:10,textTransform:"uppercase",letterSpacing:1,opacity:0.5}}>{h}</th>))}
-              </tr></thead><tbody>
-                {products.map(p=>(<tr key={p.id} style={{transition:"background 0.2s"}}>
-                  <td style={{padding:"8px 10px",borderBottom:"1px solid #F5F0E8",fontSize:20}}>{p.img}</td>
-                  <td style={{padding:"8px 10px",borderBottom:"1px solid #F5F0E8"}}><div style={{fontWeight:500}}>{p.n[lang]}</div><div style={{fontSize:10,opacity:0.4}}>{p.n[lang==="en"?"he":"en"]}</div></td>
-                  <td style={{padding:"8px 10px",borderBottom:"1px solid #F5F0E8",fontWeight:600}}>₪{p.price}</td>
-                  <td style={{padding:"8px 10px",borderBottom:"1px solid #F5F0E8"}}>{p.stock<=0?<span style={{color:"#D94F4F",fontSize:11,fontWeight:600}}>✕ 0</span>:<span style={{color:"#3D6B3D",fontSize:11,fontWeight:600}}>✓ {p.stock}</span>}</td>
-                  <td style={{padding:"8px 10px",borderBottom:"1px solid #F5F0E8",whiteSpace:"nowrap"}}><button style={{cursor:"pointer",background:"transparent",border:"1px solid #E5DDD0",borderRadius:6,padding:"4px 10px",fontSize:11,marginInlineEnd:4,fontFamily:"inherit"}} onClick={()=>openEditModal(p)}>{t.admin.edit}</button><button style={{cursor:"pointer",background:"transparent",border:"1px solid #D94F4F",borderRadius:6,padding:"4px 10px",fontSize:11,color:"#D94F4F",fontFamily:"inherit"}} onClick={()=>delProduct(p.id)}>{t.admin.del}</button></td>
-                </tr>))}
-              </tbody></table></div>
-            </div>)}
-
-            {adminTab==="categories"&&(<div>
-              <div style={{marginBottom:20}}>
-                <div className="sl" style={{marginBottom:12}}>{lang==="en"?"Add Category":"הוסף קטגוריה"}</div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
-                  <div><div style={{fontSize:9,opacity:0.4,marginBottom:4}}>ID</div><input className="fi" placeholder="e.g. bakery" value={newCat.id} onChange={e=>setNewCat({...newCat,id:e.target.value})} style={{width:120,direction:"ltr"}}/></div>
-                  <div><div style={{fontSize:9,opacity:0.4,marginBottom:4}}>Icon</div><input className="fi" placeholder="🥖" value={newCat.icon} onChange={e=>setNewCat({...newCat,icon:e.target.value})} style={{width:60,textAlign:"center"}}/></div>
-                  <div><div style={{fontSize:9,opacity:0.4,marginBottom:4}}>English</div><input className="fi" placeholder="Bakery" value={newCat.label.en} onChange={e=>setNewCat({...newCat,label:{...newCat.label,en:e.target.value}})} style={{width:140,direction:"ltr"}}/></div>
-                  <div><div style={{fontSize:9,opacity:0.4,marginBottom:4}}>עברית</div><input className="fi" placeholder="מאפייה" value={newCat.label.he} onChange={e=>setNewCat({...newCat,label:{...newCat.label,he:e.target.value}})} style={{width:140}}/></div>
-                  <button className="mb" style={{padding:"10px 20px",width:"auto"}} onClick={addCategory}>{t.admin.save}</button>
-                </div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-                {categories.map(c=>{const cnt=products.filter(p=>p.cat===c.id).length;return(<div key={c.id} style={{background:"#fff",border:"1px solid #F0EBE3",borderRadius:10,padding:14,display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:24}}>{c.icon}</span>
-                  <div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{c.label[lang]}</div><div style={{fontSize:10,opacity:0.4}}>{c.id} · {cnt} {lang==="en"?"products":"מוצרים"}</div></div>
-                  <button onClick={()=>delCategory(c.id)} disabled={cnt>0} style={{cursor:cnt>0?"not-allowed":"pointer",background:"none",border:"1px solid "+(cnt>0?"#E5DDD0":"#D94F4F"),borderRadius:6,padding:"4px 8px",fontSize:10,color:cnt>0?"#ccc":"#D94F4F",opacity:cnt>0?0.4:1,fontFamily:"inherit"}}>{t.admin.del}</button>
-                </div>);})}
-              </div>
-            </div>)}
-          </div>)}
-        </div>
-      </div>)}
-
-      {/* ═══ PRODUCT MODAL (Add/Edit) ═══ */}
-      {prodModal&&(<div style={{position:"fixed",inset:0,zIndex:700,background:"rgba(44,36,22,0.5)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(5px)",animation:"fadeIn 0.15s",padding:20}} onClick={()=>setProdModal(null)}>
-        <div style={{background:"#FDFBF7",borderRadius:16,maxWidth:520,width:"100%",padding:28,animation:"scaleIn 0.25s",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,marginBottom:20}}>{prodModal.mode==="add"?(lang==="en"?"Add Product":"הוסף מוצר"):(lang==="en"?"Edit Product":"ערוך מוצר")}</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>Name (EN)</div><input className="fi" value={prodModal.form.n?.en||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,n:{...prodModal.form.n,en:e.target.value}}})} style={{direction:"ltr"}}/></div>
-            <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>שם (HE)</div><input className="fi" value={prodModal.form.n?.he||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,n:{...prodModal.form.n,he:e.target.value}}})}/></div>
-            <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>Origin (EN)</div><input className="fi" value={prodModal.form.o?.en||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,o:{...prodModal.form.o,en:e.target.value}}})} style={{direction:"ltr"}}/></div>
-            <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>מקור (HE)</div><input className="fi" value={prodModal.form.o?.he||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,o:{...prodModal.form.o,he:e.target.value}}})}/></div>
-            <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>{t.admin.stock} ({lang==="en"?"qty":"כמות"})</div><input className="fi" type="number" min="0" value={prodModal.form.stockStr||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,stockStr:e.target.value}})} style={{direction:"ltr"}}/></div>
-            <div><div style={{fontSize:9,opacity:0.4,marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>{t.admin.cat}</div><select className="fi" value={prodModal.form.cat} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,cat:e.target.value}})}>{categories.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label[lang]}</option>)}</select></div>
-          </div>
-
-          {/* Dual pricing — enable/disable per unit type */}
-          <div style={{marginTop:14,marginBottom:10}}>
-            <div style={{fontSize:9,opacity:0.4,marginBottom:8,textTransform:"uppercase",letterSpacing:0.8}}>{lang==="en"?"Pricing (enable unit types)":"תמחור (הפעל סוגי יחידות)"}</div>
-            {[["perKg",lang==="en"?"Per kg":"לפי ק״ג"],["perUnit",lang==="en"?"Per unit":"לפי יחידה"],["perPack",lang==="en"?"Per pack":"לפי חבילה"]].map(([uKey,uLabel])=>{
-              const prices = prodModal.form.prices||{};
-              const enabled = prodModal.form.enabledUnits?.[uKey] ?? (prodModal.form.u===uKey);
-              return(
-                <div key={uKey} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,padding:"8px 10px",background:enabled?"#FFF5E5":"#F5F5F5",borderRadius:8,border:`1px solid ${enabled?"#C4A97D":"#E5DDD0"}`}}>
-                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",minWidth:90}}>
-                    <input type="checkbox" checked={!!enabled} onChange={e=>{
-                      const eu={...(prodModal.form.enabledUnits||{[prodModal.form.u||"perKg"]:true}),[uKey]:e.target.checked};
-                      const active=UNIT_KEYS.filter(k=>eu[k]);
-                      setProdModal({...prodModal,form:{...prodModal.form,enabledUnits:eu,u:active.length===1?active[0]:prodModal.form.u}});
-                    }}/>
-                    <span style={{fontSize:12.5,fontWeight:500}}>{uLabel}</span>
-                  </label>
-                  {enabled&&<div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:12,opacity:0.5}}>₪</span>
-                    <input className="fi" type="number" min="0" step="0.5" placeholder="0.00"
-                      value={prices[uKey]??""} 
-                      onChange={e=>{
-                        const newPrices={...prices,[uKey]:e.target.value};
-                        // keep priceStr in sync with first active unit's price
-                        const firstActive=UNIT_KEYS.find(k=>(prodModal.form.enabledUnits||{})[k]);
-                        setProdModal({...prodModal,form:{...prodModal.form,prices:newPrices,priceStr:firstActive===uKey?e.target.value:prodModal.form.priceStr}});
-                      }}
-                      style={{direction:"ltr",padding:"6px 10px",fontSize:13}}/>
-                  </div>}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Image — URL or upload */}
-          <div style={{marginBottom:10}}>
-            <div style={{fontSize:9,opacity:0.4,marginBottom:6,textTransform:"uppercase",letterSpacing:0.8}}>{t.admin.image}</div>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <input className="fi" value={prodModal.form.img||""} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,img:e.target.value}})} placeholder="🍏 or https://..." style={{flex:1}}/>
-              <label style={{cursor:"pointer",padding:"8px 12px",background:"#2C2416",color:"#FDFBF7",borderRadius:8,fontSize:11.5,fontFamily:"inherit",whiteSpace:"nowrap",position:"relative"}}>
-                {imgUploading?(lang==="en"?"Uploading...":"מעלה..."):(lang==="en"?"Upload 📷":"העלה 📷")}
-                <input type="file" accept="image/*" style={{position:"absolute",inset:0,opacity:0,cursor:"pointer"}} onChange={e=>{if(e.target.files[0])uploadImage(e.target.files[0],(url)=>setProdModal(prev=>({...prev,form:{...prev.form,img:url}})));}}/>
-              </label>
-            </div>
-            {prodModal.form.img&&prodModal.form.img.startsWith("http")&&<img src={prodModal.form.img} alt="preview" style={{width:60,height:60,objectFit:"cover",borderRadius:8,marginTop:6,border:"1px solid #E5DDD0"}}/>}
-            {prodModal.form.img&&!prodModal.form.img.startsWith("http")&&<span style={{fontSize:40,display:"block",marginTop:6}}>{prodModal.form.img}</span>}
-          </div>
-
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {[["organic","🌿 Organic"],["seasonal","🍂 Seasonal"],["pop","⭐ Popular"]].map(([k,l])=>(<label key={k} style={{display:"flex",alignItems:"center",gap:5,fontSize:12,cursor:"pointer"}}><input type="checkbox" checked={!!prodModal.form[k]} onChange={e=>setProdModal({...prodModal,form:{...prodModal.form,[k]:e.target.checked}})}/>{l}</label>))}
-          </div>
-          {(prodModal.form.priceStr&&parseFloat(prodModal.form.priceStr)<=0)&&<div style={{color:"#D94F4F",fontSize:11,marginTop:8}}>{lang==="en"?"Price must be positive":"מחיר חייב להיות חיובי"}</div>}
-          <div style={{display:"flex",gap:8,marginTop:18}}><button className="mb" style={{flex:1}} onClick={saveProdModal}>{t.admin.save}</button><button className="gb" style={{flex:1}} onClick={()=>setProdModal(null)}>{t.admin.cancel}</button></div>
-        </div>
-      </div>)}
+      {/* ═══ ADMIN ═══ */}
+      {adminMode&&(
+        <Suspense fallback={<div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(253,251,247,0.98)",display:"flex",alignItems:"center",justifyContent:"center"}}><PageSpinner/></div>}>
+          <AdminView
+            products={products}
+            categories={categories}
+            lang={lang}
+            onClose={()=>{setAdminMode(false);}}
+          />
+        </Suspense>
+      )}
 
       {/* ═══ ORDER SUCCESS ═══ */}
       {orderInfo&&(
@@ -1214,7 +818,7 @@ export default function GOA() {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:500,fontSize:13}}>{item.n[lang]}</div>
                     <div style={{fontSize:11.5,color:"#8B7355"}}>₪{item.price} {t.product[item.u]}</div>
-                    {notes[item.id]&&<div style={{fontSize:10.5,opacity:0.35,marginTop:3,fontStyle:"italic"}}>"{notes[item.id]}"</div>}
+                    {notes[item.id]&&<div style={{fontSize:14,opacity:0.9,marginTop:4,fontStyle:"italic",color:"var(--earth)"}}>📌 {notes[item.id]}</div>}
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
                     <span style={{fontWeight:600,fontSize:13.5,fontFamily:"'Playfair Display',serif"}}>₪{item.price*item.qty}</span>
@@ -1457,12 +1061,16 @@ export default function GOA() {
               <div className="section-head">
                 <div className="section-tag"><span className="section-divider"/>{t.catQuick}<span className="section-divider"/></div>
               </div>
-              <div className="cql">
+              <div className="cql" role="list">
                 {categories.map(c=>(
-                  <div key={c.id} className="cqi" onClick={()=>{setCat(c.id);go("shop",true)}}>
-                    <span className="cqi-icon">{c.icon}</span>
+                  <button key={c.id} className="cqi" role="listitem"
+                    onClick={()=>{setCat(c.id);go("shop",true)}}
+                    onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&(setCat(c.id),go("shop",true))}
+                    aria-label={lang==="en"?`Shop ${c.label.en}`:`קנה ${c.label.he}`}
+                    style={{background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",padding:0}}>
+                    <span className="cqi-icon" aria-hidden="true">{c.icon}</span>
                     <div className="cqi-label">{c.label[lang]}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1509,28 +1117,41 @@ export default function GOA() {
             </div>
 
             {/* Filter panel */}
-            <div className="shop-filters">
+            <div className="shop-filters" role="search" aria-label={lang==="en"?"Product filters":"סינון מוצרים"}>
               <div className="filter-cats">
-                <div className="filter-cats-pills">
+                <div className="filter-cats-pills" role="group" aria-label={lang==="en"?"Filter by category":"סינון לפי קטגוריה"}>
                   {[{id:"all",label:{en:"All",he:"הכל"}},{id:"organic",label:{en:"🌱 Organic",he:"🌱 אורגני"}},...categories.map(c=>({...c,label:{en:`${c.icon} ${c.label.en}`,he:`${c.icon} ${c.label.he}`}}))].map(c=>(
                     <button key={c.id} className={`cb ${cat===c.id?"on":""} ${c.id==="organic"?"organic-btn":""}`}
                       style={{flexShrink:0}}
-                      onClick={()=>{setCat(c.id);if(c.id!=="all")setSearch("")}}>
+                      onClick={()=>{setCat(c.id);if(c.id!=="all")setSearch("")}}
+                      aria-pressed={cat===c.id}
+                      aria-label={lang==="en"?`Filter by ${c.label.en}`:`סינון: ${c.label.he}`}>
                       {c.label[lang]}
                     </button>
                   ))}
                 </div>
                 <div style={{flexShrink:0,position:"relative",marginInlineStart:8}} onClick={e=>e.stopPropagation()}>
-                  <button className="sb" onClick={()=>setShowSort(!showSort)}>{t.sort.label} ▾</button>
-                  {showSort&&<div className="sd">{[["default","—"],["pAsc",t.sort.pAsc],["pDesc",t.sort.pDesc],["name",t.sort.name]].map(([v,l])=>(<button key={v} className={`so ${sortBy===v?"on":""}`} onClick={()=>{setSortBy(v);setShowSort(false)}}>{l}</button>))}</div>}
+                  <button className="sb" onClick={()=>setShowSort(!showSort)}
+                    aria-label={lang==="en"?"Sort products":"מיין מוצרים"}
+                    aria-expanded={showSort} aria-haspopup="listbox">
+                    {t.sort.label} ▾
+                  </button>
+                  {showSort&&<div className="sd" role="listbox" aria-label={lang==="en"?"Sort options":"אפשרויות מיון"}>
+                    {[["default","—"],["pAsc",t.sort.pAsc],["pDesc",t.sort.pDesc],["name",t.sort.name]].map(([v,l])=>(
+                      <button key={v} role="option" aria-selected={sortBy===v} className={`so ${sortBy===v?"on":""}`}
+                        onClick={()=>{setSortBy(v);setShowSort(false)}}>{l}</button>
+                    ))}
+                  </div>}
                 </div>
               </div>
               <div className="filter-price-row">
-                <span className="filter-price-label">{t.filter.price}:</span>
-                <input type="range" className="ri" min={10} max={MAX_P} value={maxPrice} onChange={e=>setMaxPrice(+e.target.value)} style={{flex:1}}/>
-                <span style={{fontSize:12,fontWeight:600,color:"var(--earth)",minWidth:38,fontFamily:"'Playfair Display',serif"}}>₪{maxPrice}{maxPrice>=MAX_P?"+":""}</span>
-                <span className="filter-count">{filtered.length}/{products.length}</span>
-                {hasFilters&&<button className="clb" onClick={clearF}>{t.filter.clear}</button>}
+                <label htmlFor="price-range" className="filter-price-label">{t.filter.price}:</label>
+                <input id="price-range" type="range" className="ri" min={10} max={MAX_P} value={maxPrice}
+                  onChange={e=>setMaxPrice(+e.target.value)} style={{flex:1}}
+                  aria-label={lang==="en"?`Maximum price: ₪${maxPrice}`:`מחיר מקסימלי: ₪${maxPrice}`}/>
+                <span style={{fontSize:12,fontWeight:600,color:"var(--earth)",minWidth:38,fontFamily:"'Playfair Display',serif"}} aria-hidden="true">₪{maxPrice}{maxPrice>=MAX_P?"+":""}</span>
+                <span className="filter-count" aria-live="polite" aria-label={`${filtered.length} of ${products.length} products`}>{filtered.length}/{products.length}</span>
+                {hasFilters&&<button className="clb" onClick={clearF} aria-label={lang==="en"?"Clear all filters":"נקה כל הסינונים"}>{t.filter.clear}</button>}
               </div>
             </div>
             <div className="pg" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>

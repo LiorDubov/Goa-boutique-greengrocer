@@ -39,7 +39,7 @@ const T = {
     banner:"Free delivery on orders over ₪250 · New weekly subscription boxes available",
     categories:{all:"All",fruits:"Fruits",vegetables:"Vegetables",herbs:"Herbs & Spices",dairy:"Dairy & Eggs",pantry:"Pantry",organic:"Organic"},
     product:{add:"Add",added:"✓",notes:"Special requests...",perKg:"/kg",perUnit:"/unit",perPack:"/pack",oos:"Out of Stock"},
-    cart:{title:"Your Selection",empty:"Your cart is empty",emptyMsg:"Browse our collection and add your favorites",subtotal:"Subtotal",delivery:"Delivery",total:"Total",checkout:"Proceed to Checkout",minimum:"Minimum order ₪100",belowMin:"Add ₪{n} more to reach minimum",deliveryDate:"Delivery Date",timeSlot:"Time Slot",morning:"Morning (8–12)",afternoon:"Afternoon (12–17)",evening:"Evening (17–21)",cash:"Cash on Delivery",card:"Pay Online",payMethod:"Payment",placeOrder:"Place Order",freeOver:"Free over ₪250",back:"Back to Cart",items:"items",yourOrder:"Your Order",contact:"Contact Details",name:"Full Name",phone:"Phone Number",email:"Email (optional)",address:"Delivery Address",addressHint:"Street, building, apartment, floor",orderNote:"Order Notes (optional)"},
+    cart:{title:"Your Selection",empty:"Your cart is empty",emptyMsg:"Browse our collection and add your favorites",subtotal:"Subtotal",delivery:"Delivery",total:"Total",checkout:"Proceed to Checkout",minimum:"Minimum order ₪100",belowMin:"Add ₪{n} more to reach minimum",deliveryDate:"Delivery Date",timeSlot:"Time Slot",morning:"Morning (8–12)",afternoon:"Afternoon (12–17)",evening:"Evening (17–21)",cash:"Cash on Delivery",card:"Pay Online",payMethod:"Payment",placeOrder:"Place Order",freeOver:"Free over ₪250",back:"Back to Cart",items:"items",yourOrder:"Your Order",contact:"Contact Details",name:"Full Name",phone:"Phone Number",email:"Email (optional)",address:"Delivery Address",addressHint:"Street, building, apartment, floor",orderNote:"Order Notes (optional)",pickup:"Self Pickup",pickupNote:"Pickup from store: King George 31, Tel Aviv",deliveryMethod:"Delivery Method",deliver:"Home Delivery"},
     sub:{title:"Weekly Baskets",subtitle:"Curated selections delivered to your door every week",small:"Essential",medium:"Family",large:"Gourmet",smallD:"Seasonal fruits & veg for 1–2 people",mediumD:"A generous mix for the whole family",largeD:"Premium selection with exotic items",subscribe:"Subscribe",pw:"/week",items:"items/week"},
     loyalty:{title:"GOA Rewards",subtitle:"Every purchase earns points towards exclusive rewards",points:"Points",tier:"Tier",silver:"Silver",earn:"Earn 1 pt per ₪10 spent",redeem:"Redeem for discounts & free delivery",freeDel:"Free delivery at Gold tier",exclusive:"Exclusive member offers",toGold:"pts to Gold"},
     about:{title:"Our Story",text:"GOA Boutique Greengrocer brings the finest, freshest produce to the heart of Tel Aviv. Located on King George 31, we source directly from local farms and premium importers to deliver an unmatched grocery experience.",visit:"Visit Us",addr:"King George 31, Tel Aviv",wa:"Chat on WhatsApp",hours:"Sun–Thu 7AM–9PM · Fri 7AM–3PM",open:"Open Chat"},
@@ -62,7 +62,7 @@ const T = {
     banner:"משלוח חינם בהזמנות מעל ₪250 · חדש: סלים שבועיים במנוי",
     categories:{all:"הכל",fruits:"פירות",vegetables:"ירקות",herbs:"תבלינים",dairy:"חלב וביצים",pantry:"מזווה",organic:"אורגני"},
     product:{add:"הוסף",added:"✓",notes:"בקשות מיוחדות...",perKg:"/ק״ג",perUnit:"/יחידה",perPack:"/חבילה",oos:"אזל מהמלאי"},
-    cart:{title:"הבחירה שלך",empty:"העגלה ריקה",emptyMsg:"גלו את המבחר שלנו",subtotal:"סכום ביניים",delivery:"משלוח",total:"סה״כ",checkout:"המשך לתשלום",minimum:"הזמנה מינימלית ₪100",belowMin:"הוסף עוד ₪{n} להזמנה מינימלית",deliveryDate:"תאריך משלוח",timeSlot:"שעת משלוח",morning:"בוקר (8–12)",afternoon:"צהריים (12–17)",evening:"ערב (17–21)",cash:"מזומן בעת משלוח",card:"תשלום אונליין",payMethod:"תשלום",placeOrder:"בצע הזמנה",freeOver:"חינם מעל ₪250",back:"חזרה לעגלה",items:"פריטים",yourOrder:"ההזמנה שלך",contact:"פרטי התקשרות",name:"שם מלא",phone:"מספר טלפון",email:"אימייל (אופציונלי)",address:"כתובת למשלוח",addressHint:"רחוב, בניין, דירה, קומה",orderNote:"הערות להזמנה (אופציונלי)"},
+    cart:{title:"הבחירה שלך",empty:"העגלה ריקה",emptyMsg:"גלו את המבחר שלנו",subtotal:"סכום ביניים",delivery:"משלוח",total:"סה״כ",checkout:"המשך לתשלום",minimum:"הזמנה מינימלית ₪100",belowMin:"הוסף עוד ₪{n} להזמנה מינימלית",deliveryDate:"תאריך משלוח",timeSlot:"שעת משלוח",morning:"בוקר (8–12)",afternoon:"צהריים (12–17)",evening:"ערב (17–21)",cash:"מזומן בעת משלוח",card:"תשלום אונליין",payMethod:"תשלום",placeOrder:"בצע הזמנה",freeOver:"חינם מעל ₪250",back:"חזרה לעגלה",items:"פריטים",yourOrder:"ההזמנה שלך",contact:"פרטי התקשרות",name:"שם מלא",phone:"מספר טלפון",email:"אימייל (אופציונלי)",address:"כתובת למשלוח",addressHint:"רחוב, בניין, דירה, קומה",orderNote:"הערות להזמנה (אופציונלי)",pickup:"איסוף עצמי",pickupNote:"איסוף מהחנות: המלך ג׳ורג׳ 31, תל אביב",deliveryMethod:"אופן קבלה",deliver:"משלוח עד הבית"},
     sub:{title:"סלים שבועיים",subtitle:"מבחר שנאסף במיוחד ומגיע אליך כל שבוע",small:"בסיסי",medium:"משפחתי",large:"גורמה",smallD:"פירות וירקות עונתיים ל-1-2 אנשים",mediumD:"מבחר נדיב לכל המשפחה",largeD:"מבחר פרימיום עם פריטים אקזוטיים",subscribe:"הירשם",pw:"/שבוע",items:"פריטים/שבוע"},
     loyalty:{title:"מועדון GOA",subtitle:"כל רכישה צוברת נקודות להטבות בלעדיות",points:"נקודות",tier:"דרגה",silver:"כסף",earn:"נקודה על כל ₪10",redeem:"מימוש להנחות ומשלוח חינם",freeDel:"משלוח חינם בדרגת זהב",exclusive:"הצעות בלעדיות לחברים",toGold:"נקודות לזהב"},
     about:{title:"הסיפור שלנו",text:"GOA ירקניית בוטיק מביאה את התוצרת הטרייה והמובחרת ביותר ללב תל אביב. ממוקמת ברחוב המלך ג׳ורג׳ 31, אנו עובדים ישירות עם חקלאים מקומיים ויבואנים מובחרים כדי להעניק חוויית קנייה ללא תחרות.",visit:"בקרו אותנו",addr:"המלך ג׳ורג׳ 31, תל אביב",wa:"וואטסאפ",hours:"א׳–ה׳ 7:00–21:00 · ו׳ 7:00–15:00",open:"פתח צ׳אט"},
@@ -128,7 +128,8 @@ const DEFAULT_CATS = [
   {id:"pantry",icon:"🫙",label:{en:"Pantry",he:"מזווה"}},
 ];
 const UNIT_KEYS=["perKg","perUnit","perPack"];
-const MAX_P=70;
+const UNIT_LABELS={en:{perKg:"/kg",perUnit:"/unit",perPack:"/pack"},he:{perKg:"/ק״ג",perUnit:"/יחידה",perPack:"/חבילה"}};
+const MAX_P=80;
 const getDates=()=>{const o=[],d=new Date();for(let i=1;i<=7;i++){const x=new Date(d);x.setDate(d.getDate()+i);if(x.getDay()!==6)o.push(x);}return o;};
 const fmtD=(d,l)=>d.toLocaleDateString(l==="he"?"he-IL":"en-US",{weekday:"short",month:"short",day:"numeric"});
 const SLOTS=["morning","afternoon","evening"];
@@ -165,10 +166,10 @@ const PCard = ({p,i,sm,q,anim,onAdd,onDec,onInc,onQv,lang,t,S}) => (
     </div>
     <div style={{padding:sm?"8px 10px 10px":"10px 14px 14px"}}>
       <div className="pname" style={{fontSize:sm?13:14.5,marginBottom:2,fontWeight:600,color:"#2C2416"}}>{p.n[lang]}</div>
-      <div style={{fontSize:11.5,opacity:0.55,marginBottom:7,color:"#8B7355"}}>{p.o[lang]}</div>
+      <div style={{fontSize:11.5,opacity:0.55,marginBottom:7,color:"#8B7355"}}>{p.o?.[lang]||""}</div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
         <span style={{fontFamily:"'Playfair Display',serif",fontSize:sm?15:17,color:"#8B7355"}}>₪{p.price}</span>
-        <span style={{fontSize:10.5,opacity:0.55}}>{t.product[p.u]}</span>
+        <span style={{fontSize:10.5,opacity:0.55}}>{UNIT_LABELS[lang]?.[p.u]||t.product[p.u]||""}</span>
       </div>
       <QtyBtn q={q} onAdd={onAdd} onDec={onDec} onInc={onInc} anim={anim} addL={t.product.add} addedL={t.product.added} sm={sm} oos={(p.stock<=0)} oosL={t.product.oos}/>
     </div>
@@ -385,6 +386,7 @@ export default function GOA() {
   const [delDate,setDelDate] = useState(null);
   const [timeSlot,setTimeSlot] = useState("");
   const [payMethod,setPayMethod] = useState("card");
+  const [deliveryMethod,setDeliveryMethod] = useState("deliver"); // "deliver" or "pickup"
   const [notes,setNotes] = useState({});
   const [addedAnim,setAddedAnim] = useState({});
   const [heroVis,setHeroVis] = useState(false);
@@ -476,9 +478,16 @@ export default function GOA() {
   const addToCart=useCallback(p=>{if((p.stock<=0))return;setCart(pr=>{const x=pr.find(i=>i.id===p.id);return x?pr.map(i=>i.id===p.id?{...i,qty:i.qty+1}:i):[...pr,{...p,qty:1}];});setAddedAnim(pr=>({...pr,[p.id]:true}));setTimeout(()=>setAddedAnim(pr=>({...pr,[p.id]:false})),800);},[]);
   const setQ=useCallback((id,q)=>{if(q<=0)setCart(pr=>pr.filter(i=>i.id!==id));else setCart(pr=>pr.map(i=>i.id===id?{...i,qty:q}:i));},[]);
   const sub = cart.reduce((s,i)=>s+i.price*i.qty,0);
-  const delFee = sub>=250?0:sub>=150?15:25;
+  const delFee = deliveryMethod==="pickup" ? 0 : sub>=250?0:sub>=150?15:25;
   const tot = sub+delFee;
   const cc = cart.reduce((s,i)=>s+i.qty,0);
+
+  // Browser back button — go to home instead of closing app
+  useEffect(()=>{
+    const handlePop = ()=>{ go("home"); };
+    window.addEventListener("popstate", handlePop);
+    return ()=>window.removeEventListener("popstate", handlePop);
+  },[]);
 
   const filtered = useMemo(()=>products
     .filter(p=>{
@@ -506,6 +515,7 @@ export default function GOA() {
     const slotStr = timeSlot ? t.cart[timeSlot] : "";
     const itemsStr = cart.map(i=>`• ${i.n[lang]} ×${i.qty} — ₪${i.price*i.qty}`).join("\n");
     const payStr = payMethod==="card" ? t.cart.card : t.cart.cash;
+    const methodStr = deliveryMethod==="pickup" ? (lang==="en"?"Self Pickup":"איסוף עצמי") : (lang==="en"?"Home Delivery":"משלוח עד הבית");
     const msg = [
       `🛒 *${lang==="en"?"New Order":"הזמנה חדשה"}*`,
       ``,
@@ -513,7 +523,7 @@ export default function GOA() {
       `${t.cart.name}: ${cName}`,
       `${t.cart.phone}: ${cPhone}`,
       cEmail ? `${lang==="en"?"Email":"אימייל"}: ${cEmail}` : null,
-      `${t.cart.address}: ${cAddr}`,
+      deliveryMethod==="deliver" ? `${t.cart.address}: ${cAddr}` : `📍 ${lang==="en"?"Pickup from store":"איסוף מהחנות"}`,
       ``,
       `📦 *${t.cart.yourOrder}*`,
       itemsStr,
@@ -522,16 +532,18 @@ export default function GOA() {
       `${t.cart.delivery}: ${delFee===0?(lang==="en"?"Free":"חינם"):`₪${delFee}`}`,
       `*${t.cart.total}: ₪${tot}*`,
       ``,
-      `🚚 ${t.cart.deliveryDate}: ${dateStr}`,
-      `⏰ ${t.cart.timeSlot}: ${slotStr}`,
+      `🚚 ${t.cart.deliveryMethod}: ${methodStr}`,
+      deliveryMethod==="deliver" ? `📅 ${t.cart.deliveryDate}: ${dateStr}` : null,
+      deliveryMethod==="deliver" ? `⏰ ${t.cart.timeSlot}: ${slotStr}` : null,
       `💳 ${t.cart.payMethod}: ${payStr}`,
       cNote ? `\n📝 ${lang==="en"?"Notes":"הערות"}: ${cNote}` : null,
     ].filter(Boolean).join("\n");
 
+    // Use wa.me for universal WhatsApp (works on desktop and mobile)
     window.open(`https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`,"_blank");
 
     // Save order to Firestore
-    const orderObj={id:Date.now(),createdAt:Date.now(),date:new Date().toISOString(),items:cart.map(i=>({id:i.id,n:i.n,qty:i.qty,price:i.price,u:i.u,img:i.img})),total:tot,deliveryFee:delFee,customerName:cName,customerPhone:cPhone,status:"pending",uid:fbUser?.uid||null,userEmail:user?.email||null};
+    const orderObj={id:Date.now(),createdAt:Date.now(),date:new Date().toISOString(),items:cart.map(i=>({id:i.id,n:i.n,qty:i.qty,price:i.price,u:i.u,img:i.img})),total:tot,deliveryFee:delFee,deliveryMethod,customerName:cName,customerPhone:cPhone,status:"pending",uid:fbUser?.uid||null,userEmail:user?.email||null};
     addDoc(ORDERS_COL,orderObj).catch(console.error);
 
     // Deduct stock in Firestore
@@ -540,12 +552,12 @@ export default function GOA() {
       if(p&&p._docId){updateDoc(prodDoc(p._docId),{stock:increment(-ci.qty)}).catch(console.error);}
     }
 
-    const info = { date:delDate, slot:timeSlot, total:tot, name:cName };
+    const info = { date:delDate, slot:timeSlot, total:tot, name:cName, method:deliveryMethod };
     setOrderInfo(info);
-    setCart([]);setStep(0);setCartOpen(false);setNotes({});setCName("");setCPhone("");setCEmail("");setCAddr("");setCNote("");setDelDate(null);setTimeSlot("");setPhoneTouched(false);
+    setCart([]);setStep(0);setCartOpen(false);setNotes({});setCName("");setCPhone("");setCEmail("");setCAddr("");setCNote("");setDelDate(null);setTimeSlot("");setPhoneTouched(false);setDeliveryMethod("deliver");
   };
 
-  const canPlace = delDate && timeSlot && cName.trim() && phoneValid && cAddr.trim();
+  const canPlace = cName.trim() && phoneValid && (deliveryMethod==="pickup" || (cAddr.trim() && delDate && timeSlot));
 
   /* Auth helpers — Firebase */
   const doAuth=async(mode)=>{
@@ -847,6 +859,15 @@ export default function GOA() {
                   ))}
                 </div>
               </div>
+              {/* Delivery Method Toggle */}
+              <div style={{marginBottom:22}}>
+                <div className="sl">{t.cart.deliveryMethod}</div>
+                <div style={{display:"flex",gap:8}}>
+                  <button className={`pb ${deliveryMethod==="deliver"?"on":""}`} onClick={()=>setDeliveryMethod("deliver")}>🚚 {t.cart.deliver}</button>
+                  <button className={`pb ${deliveryMethod==="pickup"?"on":""}`} onClick={()=>setDeliveryMethod("pickup")}>🏪 {t.cart.pickup}</button>
+                </div>
+                {deliveryMethod==="pickup"&&<div style={{marginTop:8,fontSize:11.5,color:"#8B7355",background:"#FFF5E5",borderRadius:8,padding:"8px 12px"}}>{t.cart.pickupNote}</div>}
+              </div>
               {/* Contact */}
               <div style={{marginBottom:22}}>
                 <div className="sl">{t.cart.contact}</div>
@@ -859,20 +880,23 @@ export default function GOA() {
                     {phoneError&&<div style={{fontSize:10.5,color:"#D94F4F",marginTop:4}}>{lang==="en"?"Enter a valid Israeli mobile (05XXXXXXXX)":"הזן מספר נייד ישראלי (05XXXXXXXX)"}</div>}
                   </div>
                   <Inp val={cEmail} set={setCEmail} ph={t.cart.email} type="email"/>
-                  <Inp val={cAddr} set={setCAddr} ph={t.cart.address} req/>
-                  <div style={{fontSize:10.5,opacity:0.3,marginTop:-6}}>{t.cart.addressHint}</div>
+                  {deliveryMethod==="deliver"&&<>
+                    <Inp val={cAddr} set={setCAddr} ph={t.cart.address} req/>
+                    <div style={{fontSize:10.5,opacity:0.3,marginTop:-6}}>{t.cart.addressHint}</div>
+                  </>}
                 </div>
               </div>
-              {/* Delivery date */}
+              {/* Delivery date & time — only for home delivery */}
+              {deliveryMethod==="deliver"&&<>
               <div style={{marginBottom:22}}>
                 <div className="sl">{t.cart.deliveryDate}</div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{getDates().map((d,i)=>(<button key={i} className={`db ${delDate&&d.toDateString()===delDate.toDateString()?"on":""}`} onClick={()=>setDelDate(d)}>{fmtD(d,lang)}</button>))}</div>
               </div>
-              {/* Time */}
               <div style={{marginBottom:22}}>
                 <div className="sl">{t.cart.timeSlot}</div>
                 <div style={{display:"flex",gap:6}}>{SLOTS.map(s=>(<button key={s} className={`tb ${timeSlot===s?"on":""}`} onClick={()=>setTimeSlot(s)}>{t.cart[s]}</button>))}</div>
               </div>
+              </>}
               {/* Payment */}
               <div style={{marginBottom:22}}>
                 <div className="sl">{t.cart.payMethod}</div>
@@ -1047,8 +1071,15 @@ export default function GOA() {
               <div style={{background:"#fff",border:"1px solid #F0EBE3",borderRadius:12,padding:24,textAlign:"center"}}>
                 <div style={{fontSize:26,marginBottom:8}}>📍</div>
                 <div style={{fontWeight:600,marginBottom:3,fontSize:14}}>{t.about.visit}</div>
-                <div style={{fontSize:12.5,opacity:0.5}}>{t.about.addr}</div>
+                <div
+                  style={{fontSize:12.5,opacity:0.6,cursor:"pointer",color:"#8B7355",textDecoration:"underline"}}
+                  onClick={()=>window.open("https://waze.com/ul?q=King+George+31+Tel+Aviv&navigate=yes","_blank")}
+                >{t.about.addr}</div>
                 <div style={{fontSize:11,opacity:0.3,marginTop:5}}>{t.about.hours}</div>
+                <div style={{display:"flex",gap:6,justifyContent:"center",marginTop:10}}>
+                  <button onClick={()=>window.open("https://waze.com/ul?q=King+George+31+Tel+Aviv&navigate=yes","_blank")} style={{cursor:"pointer",padding:"6px 14px",background:"#00BFFF",color:"#fff",border:"none",borderRadius:16,fontSize:11,fontFamily:"inherit"}}>🚗 Waze</button>
+                  <button onClick={()=>window.open("https://maps.google.com/?q=King+George+31+Tel+Aviv","_blank")} style={{cursor:"pointer",padding:"6px 14px",background:"#4285F4",color:"#fff",border:"none",borderRadius:16,fontSize:11,fontFamily:"inherit"}}>🗺 Maps</button>
+                </div>
               </div>
               <div style={{background:"#fff",border:"1px solid #F0EBE3",borderRadius:12,padding:24,textAlign:"center"}}>
                 <div style={{fontSize:26,marginBottom:8}}>💬</div>

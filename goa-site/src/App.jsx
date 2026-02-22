@@ -14,6 +14,8 @@ const AdminView    = lazy(() => import("./components/AdminView.jsx"));
 const EmployeeView = lazy(() => import("./components/EmployeeView.jsx"));
 const ChatWidget   = lazy(() => import("./components/ChatWidget.jsx"));
 
+const roundUp1 = (n) => Math.ceil(n * 10) / 10;
+import { T, WA_PHONE, STRIPE_LINK, UNIT_KEYS, UNIT_LABELS, MAX_P, fmtPrice, getDates, fmtD, SLOTS, IL_CITIES, SUBS, DEFAULT_CATS } from "./constants.js";
 /* ═══ TEL AVIV STREETS — delivery area ═══ */
 const TEL_AVIV_STREETS = [
   "אבן גבירול","אחד העם","אלנבי","ארלוזורוב","בוגרשוב","בן יהודה","בן צבי","בן גוריון",

@@ -20,12 +20,12 @@ export const db      = getFirestore(app);
 export const auth    = getAuth(app);
 export const storage = getStorage(app);
 
-// Collection references
-export const PRODUCTS_COL   = "products";
-export const ORDERS_COL     = "orders";
-export const CATEGORIES_COL = "categories";
+// Collection references (objects, not strings)
+export const PRODUCTS_COL   = collection(db, "products");
+export const ORDERS_COL     = collection(db, "orders");
+export const CATEGORIES_COL = collection(db, "categories");
 
 // Document helpers
-export const prodDoc  = (id) => doc(db, PRODUCTS_COL, id);
-export const orderDoc = (id) => doc(db, ORDERS_COL, id);
-export const catDoc   = (id) => doc(db, CATEGORIES_COL, id);
+export const prodDoc  = (id) => doc(db, "products", id);
+export const orderDoc = (id) => doc(db, "orders", id);
+export const catDoc   = (id) => doc(db, "categories", id);

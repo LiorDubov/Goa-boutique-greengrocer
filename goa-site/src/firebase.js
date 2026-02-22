@@ -15,6 +15,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+export const fbApp   = app;
 export const db      = getFirestore(app);
 export const auth    = getAuth(app);
 export const storage = getStorage(app);
@@ -27,3 +28,4 @@ export const CATEGORIES_COL = "categories";
 // Document helpers
 export const prodDoc  = (id) => doc(db, PRODUCTS_COL, id);
 export const orderDoc = (id) => doc(db, ORDERS_COL, id);
+export const catDoc   = (id) => doc(db, CATEGORIES_COL, id);

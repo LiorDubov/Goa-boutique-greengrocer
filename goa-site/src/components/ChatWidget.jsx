@@ -23,17 +23,21 @@ const ChatWidget = ({ lang, open, onClose }) => {
     setTimeout(() => {
       const low = text.toLowerCase();
       let reply;
-      if (low.includes("hour") || low.includes("שעות") || low.includes("open") || low.includes("פתוח"))
-        reply = t.hoursA;
-      else if (low.includes("zone") || low.includes("deliver") || low.includes("משלוח") || low.includes("אזור"))
-        reply = t.zonesA;
-      else if (low.includes("human") || low.includes("נציג") || low.includes("person")) {
-        reply = t.humanA;
+      if (low.includes("hour") || low.includes("שעות") || low.includes("open") || low.includes("פתוח") || low.includes("time") || low.includes("שעה"))
+        reply = lang === "en"
+          ? "We're open Sun–Thu 08:00–21:00, Friday 08:00 until Shabbat. Closed Saturday 🕐"
+          : "אנחנו פתוחים א׳–ה׳ 08:00–21:00, שישי 08:00 עד כניסת שבת. שבת סגור 🕐";
+      else if (low.includes("zone") || low.includes("deliver") || low.includes("משלוח") || low.includes("אזור") || low.includes("where") || low.includes("איפה"))
+        reply = lang === "en"
+          ? "We deliver exclusively within Tel Aviv 🚚 Select your street at checkout."
+          : "אנחנו מגיעים לתל אביב בלבד 🚚 בחרו את הרחוב שלכם בעת ההזמנה.";
+      else if (low.includes("human") || low.includes("נציג") || low.includes("person") || low.includes("speak") || low.includes("דבר")) {
+        reply = lang === "en" ? "Connecting you to WhatsApp..." : "מעביר לוואטסאפ...";
         setTimeout(() => window.open(`https://wa.me/${WA_PHONE}`, "_blank"), 1500);
       } else {
         reply = lang === "en"
-          ? "I can help with hours, delivery zones, or connect you to our team! 🌿"
-          : "אני יכול לעזור עם שעות פתיחה, אזורי משלוח, או לחבר אותך לצוות שלנו! 🌿";
+          ? "I can help with our hours, delivery zones (Tel Aviv only), or connect you to our team! 🌿"
+          : "אני יכול לעזור עם שעות פתיחה, אזורי משלוח (תל אביב בלבד), או לחבר אותך לצוות שלנו! 🌿";
       }
       setMsgs(p => [...p, { from: "bot", text: reply }]);
     }, 600);

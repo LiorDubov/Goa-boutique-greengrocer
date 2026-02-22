@@ -6,7 +6,7 @@ import { fbApp, PRODUCTS_COL, CATEGORIES_COL, prodDoc, catDoc } from "../firebas
 
 const storage = getStorage(fbApp);
 
-const ADMIN_PIN = "1234";
+const ADMIN_PIN = "Goa@2025#Admin";
 
 const AdminView = ({ products, categories, lang, onClose }) => {
   const t = T[lang];

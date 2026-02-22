@@ -14,6 +14,19 @@ const AdminView    = lazy(() => import("./components/AdminView.jsx"));
 const EmployeeView = lazy(() => import("./components/EmployeeView.jsx"));
 const ChatWidget   = lazy(() => import("./components/ChatWidget.jsx"));
 
+/* ═══ TEL AVIV STREETS — delivery area ═══ */
+const TEL_AVIV_STREETS = [
+  "אבן גבירול","אחד העם","אלנבי","ארלוזורוב","בוגרשוב","בן יהודה","בן צבי","בן גוריון",
+  "דיזנגוף","דרך מנחם בגין","דרך פתח תקווה","האירוסים","הארבעה","הברון הירש",
+  "הגליל","הירקון","הכרמל","המלך ג׳ורג׳","הנביאים","הרצל","השל״ה","ויצמן",
+  "זמנהוף","חיים לבנון","טשרניחובסקי","יהודה הלוי","יהודה המכבי","יוני נתניהו",
+  "ילין","כיכר דיזנגוף","כצנלסון","לה גווארדיה","לוינסקי","לילינבלום",
+  "מזא״ה","מרכז בעלי מלאכה","נחלת בנימין","נחלת יצחק","נורדאו","סוקולוב",
+  "סינגלובסקי","פינסקר","פלורנטין","פרישמן","צ׳לנוב","קינג׳ ג׳ורג׳","קפלן",
+  "רוטשילד","רמב״ם","שד׳ ירושלים","שד׳ לה גווארדיה","שד׳ שאול המלך","שינקין",
+  "שלמה המלך","שמואל הנגיד","תובל"
+].sort();
+
 /* ═══ LOCAL HELPERS (not in constants.js) ═══ */
 /* ═══ EXTERNAL SUB-COMPONENTS (defined OUTSIDE main function — fixes focus bug) ═══ */
 const Inp = ({ val, set, ph, type="text", req, error, onBlur }) => (
@@ -169,6 +182,7 @@ export default function GOA() {
   const [cPhone,setCPhone] = useState("");
   const [cEmail,setCEmail] = useState("");
   const [cAddr,setCAddr] = useState("");
+  const [cAddrNum,setCAddrNum] = useState("");
   const [cNote,setCNote] = useState("");
   const [phoneTouched,setPhoneTouched] = useState(false);
   const searchRef = useRef(null);
@@ -339,7 +353,7 @@ export default function GOA() {
       `Phone: ${cPhone}`,
       cEmail ? `Email: ${cEmail}` : null,
       deliveryMethod==="deliver"
-        ? `Address: ${cAddr}${addrCity?", "+addrCity:""}`
+        ? `Address: ${cAddr}${cAddrNum?", "+cAddrNum:""}, Tel Aviv`
         : `📍 Store pickup — King George 31, Tel Aviv`,
       ``,
       `📦 *Order Summary*`,
@@ -369,7 +383,7 @@ export default function GOA() {
       `טלפון: ${cPhone}`,
       cEmail ? `אימייל: ${cEmail}` : null,
       deliveryMethod==="deliver"
-        ? `כתובת: ${cAddr}${addrCity?", "+addrCity:""}`
+        ? `כתובת: ${cAddr}${cAddrNum?", "+cAddrNum:""}, תל אביב`
         : `📍 איסוף עצמי — המלך ג׳ורג׳ 31, תל אביב`,
       ``,
       `📦 *סיכום ההזמנה*`,
@@ -409,12 +423,12 @@ export default function GOA() {
 
     const info = { date:delDate, slot:timeSlot, total:tot, name:cName, method:deliveryMethod, payMethod };
     setOrderInfo(info);
-    setCart([]);setStep(0);setCartOpen(false);setNotes({});setCName("");setCPhone("");setCEmail("");setCAddr("");setCNote("");setDelDate(null);setTimeSlot("");setPhoneTouched(false);setDeliveryMethod("deliver");setAddrCity("");setEmailTouched(false);setPayMethod("stripe");
+    setCart([]);setStep(0);setCartOpen(false);setNotes({});setCName("");setCPhone("");setCEmail("");setCAddr("");setCAddrNum("");setCNote("");setDelDate(null);setTimeSlot("");setPhoneTouched(false);setDeliveryMethod("deliver");setAddrCity("");setEmailTouched(false);setPayMethod("stripe");
   };
 
   const phoneValid = /^05\d{8}$/.test(cPhone.replace(/[\s\-()]/g,""));
   const phoneError = phoneTouched && cPhone.trim() && !phoneValid;
-  const canPlace = cName.trim() && phoneValid && emailValid && (deliveryMethod==="pickup" || (cAddr.trim() && addrCity && delDate && timeSlot));
+  const canPlace = cName.trim() && phoneValid && emailValid && (deliveryMethod==="pickup" || (cAddr && cAddrNum.trim() && delDate && timeSlot));
 
   /* Auth helpers — Firebase */
   const doAuth=async(mode)=>{
@@ -700,7 +714,7 @@ export default function GOA() {
                   {qv.seasonal&&<span className="tag stag">{t.seasonalTag}</span>}
                   {qv.pop&&<span className="tag ptag">{t.popular}</span>}
                 </div>
-                <button onClick={()=>setQv(null)} style={{position:"absolute",top:12,[E]:12,cursor:"pointer",background:"rgba(255,255,255,0.85)",border:"none",borderRadius:"50%",width:32,height:32,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 4px rgba(0,0,0,0.12)"}}>✕</button>
+                <button onClick={()=>setQv(null)} aria-label={lang==="en"?"Close product view":"סגור תצוגת מוצר"} style={{position:"absolute",top:12,[E]:12,cursor:"pointer",background:"rgba(44,36,22,0.82)",border:"none",borderRadius:"50%",width:34,height:34,fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.25)",color:"#fff",fontWeight:700}}>✕</button>
               </div>
 
               <div style={{padding:"20px 24px 24px",overflowY:"auto"}}>
@@ -860,10 +874,8 @@ export default function GOA() {
                 <div style={{display:"flex",justifyContent:"space-between",fontWeight:600,fontSize:17,fontFamily:"'Playfair Display',serif",borderTop:"1px solid var(--parchment)",paddingTop:10,marginTop:6,marginBottom:14}}>
                   <span>{t.cart.total}</span><span>₪{tot}</span>
                 </div>
-                {sub<100
-                  ? <div role="alert" style={{textAlign:"center",padding:10,background:"var(--gold-pale)",borderRadius:8,fontSize:12.5,color:"var(--earth)"}}>{t.cart.belowMin.replace("{n}",fmtPrice(100-sub))}</div>
-                  : <button className="mb" onClick={()=>setStep(1)} aria-label={lang==="en"?`Proceed to checkout, total ₪${tot}`:`המשך לתשלום, סה"כ ₪${tot}`}>{t.cart.checkout}</button>
-                }
+                {/* No minimum order */}
+                <button className="mb" onClick={()=>setStep(1)} aria-label={lang==="en"?`Proceed to checkout, total ₪${tot}`:`המשך לתשלום, סה"כ ₪${tot}`}>{t.cart.checkout}</button>
               </div>
             )}
           </>):(
@@ -929,12 +941,14 @@ export default function GOA() {
                   <Inp val={cEmail} set={setCEmail} ph={t.cart.email} type="email" error={emailError} onBlur={()=>setEmailTouched(true)}/>
                   {emailError&&<div style={{fontSize:10.5,color:"#D94F4F",marginTop:-6}}>{lang==="en"?"Enter a valid email address":"כתובת אימייל לא תקינה"}</div>}
                   {deliveryMethod==="deliver"&&<>
-                    <select className="fi" value={addrCity} onChange={e=>setAddrCity(e.target.value)} style={{color:addrCity?"#2C2416":"#B0A090"}}>
-                      <option value="">{lang==="en"?"Select City":"בחר עיר"}</option>
-                      {IL_CITIES.map(c=><option key={c} value={c}>{c}</option>)}
+                    <div style={{background:"var(--sage-pale)",border:"1px solid var(--sage-light)",borderRadius:8,padding:"8px 12px",fontSize:14,color:"var(--sage)",marginBottom:2}}>
+                      📍 {lang==="en"?"Delivery available in Tel Aviv only":"משלוח זמין בתל אביב בלבד"}
+                    </div>
+                    <select className="fi" value={cAddr} onChange={e=>setCAddr(e.target.value)} style={{color:cAddr?"#2C2416":"#B0A090"}}>
+                      <option value="">{lang==="en"?"Select Street":"בחר רחוב"}</option>
+                      {TEL_AVIV_STREETS.map(s=><option key={s} value={s}>{s}</option>)}
                     </select>
-                    <Inp val={cAddr} set={setCAddr} ph={t.cart.address} req/>
-                    <div style={{fontSize:10.5,opacity:0.3,marginTop:-6}}>{t.cart.addressHint}</div>
+                    <Inp val={cAddrNum} set={setCAddrNum} ph={lang==="en"?"Building no., Apt., Floor":"מספר בניין, דירה, קומה"} req/>
                   </>}
                 </div>
               </div>
@@ -942,7 +956,23 @@ export default function GOA() {
               {deliveryMethod==="deliver"&&<>
               <div style={{marginBottom:22}}>
                 <div className="sl">{t.cart.deliveryDate}</div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{getDates().map((d,i)=>(<button key={i} className={`db ${delDate&&d.toDateString()===delDate.toDateString()?"on":""}`} onClick={()=>setDelDate(d)}>{fmtD(d,lang)}</button>))}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{(()=>{
+                  // Same-day available if before 14:00; show next 7 days excluding Saturdays
+                  const now=new Date();
+                  const cutoffHour=14;
+                  const dates=[];
+                  const sameDayOk=now.getHours()<cutoffHour && now.getDay()!==6;
+                  if(sameDayOk) dates.push(new Date(now));
+                  for(let i=1;dates.length<7;i++){
+                    const x=new Date(now);x.setDate(now.getDate()+i);
+                    if(x.getDay()!==6) dates.push(x);
+                  }
+                  return dates.map((d,i)=>{
+                    const isToday=d.toDateString()===now.toDateString();
+                    const label=isToday?(lang==="en"?"Today — Same Day":"היום — אותו יום"):fmtD(d,lang);
+                    return(<button key={i} className={`db ${delDate&&d.toDateString()===delDate.toDateString()?"on":""}`} onClick={()=>setDelDate(d)} style={isToday?{borderColor:"var(--sage)",color:"var(--sage)",fontWeight:600}:{}}>{label}</button>);
+                  });
+                })()}</div>
               </div>
               <div style={{marginBottom:22}}>
                 <div className="sl">{t.cart.timeSlot}</div>

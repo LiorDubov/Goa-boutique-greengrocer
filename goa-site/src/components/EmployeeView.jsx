@@ -11,7 +11,7 @@ const EmployeeView = ({ orders, lang, onBack }) => {
   const [empPin, setEmpPin] = useState("");
   const [pinError, setPinError] = useState(false);
 
-  const EMP_PIN = "5678";
+  const EMP_PIN = "Goa@Staff25";
 
   useEffect(() => {
     const iv = setInterval(() => setNow(Date.now()), 2000);

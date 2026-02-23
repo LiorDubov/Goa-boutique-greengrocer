@@ -71,7 +71,7 @@ const PCard = ({p,i,sm,q,anim,onAdd,onDec,onInc,onQv,lang,t,S}) => {
     {q>0&&<div className="cbadge" aria-hidden="true">{q}</div>}
     <div className="pcard__img" style={{height:sm?118:152,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
       {p.img?.startsWith("http")
-        ? <img src={p.img} alt={`${name}${origin?" from "+origin:""}`} loading="lazy" width="200" height={sm?118:152} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+        ? <img src={p.img} alt={`${name}${origin?" from "+origin:""}`} loading="lazy" decoding="async" width="200" height={sm?118:152} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
         : <span role="img" aria-label={name} style={{fontSize:sm?50:64,display:"block",padding:sm?"16px":"20px"}}>{p.img}</span>
       }
       <div style={{position:"absolute",top:8,display:"flex",gap:4,flexWrap:"wrap",maxWidth:"75%",[S]:8}} aria-hidden="true">
@@ -142,6 +142,8 @@ export default function GOA() {
     const unsubProducts=onSnapshot(PRODUCTS_COL,(snap)=>{
       if(!snap.empty){
         setProducts(snap.docs.map(d=>({...d.data(),_docId:d.id,id:(d.data().id ?? (parseInt(d.id) || 0))})));
+      } else {
+        setProducts([]);
       }
     },(err)=>console.error("Products listener error:",err));
     const unsubOrders=onSnapshot(ORDERS_COL,(snap)=>{
@@ -149,9 +151,12 @@ export default function GOA() {
         const all=snap.docs.map(d=>({...d.data(),_docId:d.id}));
         setOrderHistory(all);
       } else { setOrderHistory([]); }
-    },(err)=>console.error("Orders listener error:",err));    const unsubCats=onSnapshot(CATEGORIES_COL,(snap)=>{
+    },(err)=>console.error("Orders listener error:",err));
+    const unsubCats=onSnapshot(CATEGORIES_COL,(snap)=>{
       if(!snap.empty){
         setCategories(snap.docs.map(d=>({...d.data(),_docId:d.id})));
+      } else {
+        setCategories(DEFAULT_CATS);
       }
     },(err)=>console.error("Categories listener error:",err));
     return()=>{unsubProducts();unsubOrders();unsubCats();};
@@ -260,15 +265,15 @@ export default function GOA() {
   // Close mobile menu on outside click
   useEffect(()=>{
     if(!mobileMenu) return;
-    const h=(e)=>{ if(!e.target.closest(".mobile-menu, .hamburger")) setMobileMenu(false); };
+    const h=(e)=>{ if(!e.target.closest("#mobile-menu, .ham")) setMobileMenu(false); };
     setTimeout(()=>document.addEventListener("click",h),0);
     return ()=>document.removeEventListener("click",h);
   },[mobileMenu]);
 
-  // Back to top visibility
+  // Back to top visibility (passive for scroll perf)
   useEffect(()=>{
     const h=()=>setShowBackTop(window.scrollY>400);
-    window.addEventListener("scroll",h);
+    window.addEventListener("scroll",h,{passive:true});
     return ()=>window.removeEventListener("scroll",h);
   },[]);
 
@@ -458,7 +463,7 @@ export default function GOA() {
     // Re-sign-in anonymously so Firestore still works
     signInAnonymously(auth).catch(console.error);
   };
-  const reorder=order=>{const nc=order.items.map(i=>{const lv=products.find(p=>p.id===i.id);return lv&&(lv.stock??0)>0?{...lv,qty:i.qty}:null;}).filter(Boolean);setCart(nc);setCartOpen(true);setStep(0);};
+  const reorder=order=>{const nc=order.items.map(i=>{const lv=products.find(p=>String(p.id)===String(i.id));return lv&&(lv.stock??0)>0?{...lv,qty:Math.min(i.qty,lv.stock)}:null;}).filter(Boolean);setCart(nc);setCartOpen(true);setStep(0);};
   const userOrderHistory = user ? orderHistory.filter(o=>o.userEmail===user.email) : [];
 
   /* Admin helpers — Firestore */
@@ -708,7 +713,7 @@ export default function GOA() {
               {/* Image */}
               <div style={{height:200,position:"relative",overflow:"hidden",background:"linear-gradient(145deg,#FAF7F0,#EDE7DA,#F5EFE3)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 {qv.img?.startsWith("http")
-                  ? <img src={qv.img} alt={qv.n[lang]} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                  ? <img src={qv.img} alt={qv.n[lang]} loading="lazy" decoding="async" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                   : <span style={{fontSize:72,filter:"drop-shadow(0 6px 12px rgba(44,36,22,0.1))"}}>{qv.img}</span>
                 }
                 <div style={{position:"absolute",top:12,display:"flex",gap:4,flexWrap:"wrap",[S]:12}}>

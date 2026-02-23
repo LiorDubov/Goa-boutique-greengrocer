@@ -1,12 +1,10 @@
 import { useState, useRef } from "react";
 import { addDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { T, UNIT_KEYS, IL_CITIES } from "../constants.js";
+import { T, UNIT_KEYS, IL_CITIES, ADMIN_PIN } from "../constants.js";
 import { fbApp, PRODUCTS_COL, CATEGORIES_COL, prodDoc, catDoc } from "../firebase.js";
 
 const storage = getStorage(fbApp);
-
-const ADMIN_PIN = "Goa@2025#Admin";
 
 const AdminView = ({ products, categories, lang, onClose }) => {
   const t = T[lang];

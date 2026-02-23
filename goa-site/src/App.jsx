@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, useCallback, useMemo, Suspense, lazy } fro
 import "./goa.css";
 
 // Firebase — only what the main bundle needs
-import { onSnapshot, addDoc, updateDoc, increment } from "firebase/firestore";
+import { onSnapshot, addDoc, updateDoc, increment, deleteDoc } from "firebase/firestore";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 // Shared modules
-import { db, auth, PRODUCTS_COL, ORDERS_COL, CATEGORIES_COL, prodDoc, orderDoc } from "./firebase.js";
-import { T, WA_PHONE, STRIPE_LINK, UNIT_KEYS, UNIT_LABELS, MAX_P, fmtPrice, getDates, fmtD, SLOTS, IL_CITIES, SUBS, DEFAULT_CATS } from "./constants.js";
+import { db, auth, storage, PRODUCTS_COL, ORDERS_COL, CATEGORIES_COL, prodDoc, orderDoc, catDoc } from "./firebase.js";
+import { T, WA_PHONE, STRIPE_LINK, UNIT_KEYS, UNIT_LABELS, MAX_P, fmtPrice, getDates, fmtD, SLOTS, IL_CITIES, SUBS, DEFAULT_CATS, ADMIN_PIN } from "./constants.js";
 const roundUp1 = (n) => Math.ceil(n * 10) / 10;
 
 // Lazy-loaded chunks — Admin, Employee, Chat load only when accessed

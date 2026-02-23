@@ -3,6 +3,7 @@ import { addDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { T, UNIT_KEYS, IL_CITIES, ADMIN_PIN } from "../constants.js";
 import { fbApp, PRODUCTS_COL, CATEGORIES_COL, prodDoc, catDoc } from "../firebase.js";
+import { SEED_PRODUCTS } from "../seedProducts.js";
 
 const storage = getStorage(fbApp);
 
@@ -18,6 +19,8 @@ const AdminView = ({ products, categories, lang, onClose }) => {
   const [modal, setModal] = useState(null);
   const [imgUploading, setImgUploading] = useState(false);
   const [newCat, setNewCat] = useState({ id: "", icon: "", label: { en: "", he: "" } });
+  const [seedImporting, setSeedImporting] = useState(false);
+  const [seedResult, setSeedResult] = useState(null);
 
   const tryLogin = () => {
     if (pin === ADMIN_PIN) { setAuth(true); setPinError(false); }
@@ -100,6 +103,49 @@ const AdminView = ({ products, categories, lang, onClose }) => {
     if (c && c._docId) { try { await deleteDoc(catDoc(c._docId)); } catch (e) { console.error(e); } }
   };
 
+  const runSeedImport = async () => {
+    setSeedResult(null);
+    setSeedImporting(true);
+    let added = 0;
+    let skipped = 0;
+    const maxId = products.length ? Math.max(...products.map(p => p.id)) : 0;
+    try {
+      for (let i = 0; i < SEED_PRODUCTS.length; i++) {
+        const item = SEED_PRODUCTS[i];
+        if (products.some(p => p.n.he === item.he)) {
+          skipped++;
+          continue;
+        }
+        const id = maxId + 1 + added;
+        const u = item.unit === "perUnit" ? "perUnit" : "perKg";
+        const enabledUnits = { perKg: u === "perKg", perUnit: u === "perUnit", perPack: false };
+        const unitPrices = { [u]: item.price };
+        const data = {
+          id,
+          n: { en: item.en, he: item.he },
+          price: item.price,
+          u,
+          unitPrices,
+          enabledUnits,
+          stock: 50,
+          cat: item.cat,
+          img: item.img || "🍏",
+          organic: false,
+          seasonal: false,
+          pop: false,
+          o: { en: "", he: "" }
+        };
+        await addDoc(PRODUCTS_COL, data);
+        added++;
+      }
+      setSeedResult({ added, skipped });
+    } catch (e) {
+      console.error("Seed import error:", e);
+      setSeedResult({ error: e.message || "Import failed" });
+    }
+    setSeedImporting(false);
+  };
+
   const btn = { cursor: "pointer", fontFamily: "inherit" };
 
   if (!auth) return (
@@ -143,11 +189,20 @@ const AdminView = ({ products, categories, lang, onClose }) => {
         {/* Products tab */}
         {tab === "products" && (
           <div role="tabpanel">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
               <div className="sl" style={{ margin: 0 }}>{t.admin.products} ({products.length})</div>
-              <button className="cb on" style={{ fontSize: 12 }} onClick={openAddModal}
-                aria-label={lang === "en" ? "Add new product" : "הוסף מוצר חדש"}>{t.admin.add}</button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button className="gb" style={{ fontSize: 12 }} onClick={runSeedImport} disabled={seedImporting}
+                  aria-label={lang === "en" ? "Import seed products" : "ייבוא מוצרי זרע"}>{seedImporting ? (lang === "en" ? "Importing…" : "מייבא…") : (lang === "en" ? "Import seed products" : "ייבוא מוצרי זרע")}</button>
+                <button className="cb on" style={{ fontSize: 12 }} onClick={openAddModal}
+                  aria-label={lang === "en" ? "Add new product" : "הוסף מוצר חדש"}>{t.admin.add}</button>
+              </div>
             </div>
+            {seedResult && (
+              <div role="status" style={{ marginBottom: 12, padding: 10, background: seedResult.error ? "#FAEDE8" : "#EAF2EA", borderRadius: 8, fontSize: 12, color: seedResult.error ? "#C0392B" : "#3D6B3D" }}>
+                {seedResult.error ? seedResult.error : (lang === "en" ? `Added ${seedResult.added} products.${seedResult.skipped ? ` ${seedResult.skipped} already existed.` : ""}` : `נוספו ${seedResult.added} מוצרים.${seedResult.skipped ? ` ${seedResult.skipped} כבר היו.` : ""}`)}
+              </div>
+            )}
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }} role="grid" aria-label="Products list">
                 <thead>
